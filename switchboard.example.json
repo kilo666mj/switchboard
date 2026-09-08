@@ -1,0 +1,23 @@
+{
+  "listen": "127.0.0.1:8090",
+  "transport": "http",
+  "profile": "infrastructure-read",
+  "capability_dir": "capabilities",
+  "profiles": {
+    "infrastructure-read": [
+      "rilldns"
+    ],
+    "all": [
+      "fleetglass",
+      "log_watcher",
+      "parallaxd",
+      "rendercase",
+      "rilldns",
+      "tintwire",
+      "wayminder"
+    ],
+    "agent-relay": [
+      "agent"
+    ]
+  }
+}

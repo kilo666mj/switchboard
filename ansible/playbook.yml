@@ -1,0 +1,325 @@
+---
+- name: Deploy Switchboard
+  hosts: switchboard
+  become: true
+  vars_files:
+    - private.yml
+  vars:
+    switchboard_build_dir: "{{ playbook_dir }}/.build"
+    switchboard_binary: "{{ switchboard_build_dir }}/switchboard"
+    switchboard_capabilities:
+      - fleetglass
+      - forgejo
+      - log_watcher
+      - parallaxd
+      - rendercase
+      - rilldns
+      - tintwire
+      - wayminder
+
+  pre_tasks:
+    - name: Validate private deployment inputs
+      ansible.builtin.assert:
+        that:
+          - switchboard_public_origin | length > 0
+          - switchboard_bearer_token | length >= 32
+          - switchboard_oauth_token_url | length > 0
+          - fleetglass_mcp_url | length > 0
+          - fleetglass_mcp_token | length >= 32
+          - forgejo_mcp_url | length > 0
+          - forgejo_mcp_token | length >= 32
+          - log_watcher_api_url | length > 0
+          - log_watcher_api_token | length >= 32
+          - parallaxd_mcp_url | length > 0
+          - parallaxd_mcp_token | length >= 32
+          - rendercase_mcp_url | length > 0
+          - rendercase_mcp_host | length > 0
+          - rendercase_oauth_client_id | length > 0
+          - rendercase_oauth_client_secret | length >= 32
+          - rendercase_oauth_resource | length > 0
+          - rilldns_mcp_url | length > 0
+          - rilldns_mcp_token | length >= 32
+          - tintwire_mcp_url | length > 0
+          - tintwire_oauth_client_id | length > 0
+          - tintwire_oauth_client_secret | length >= 32
+          - tintwire_oauth_resource | length > 0
+          - wayminder_mcp_url | length > 0
+          - wayminder_mcp_token | length >= 32
+          - "'placeholder' not in (switchboard_bearer_token | lower)"
+          - "'placeholder' not in (fleetglass_mcp_token | lower)"
+          - "'placeholder' not in (forgejo_mcp_token | lower)"
+          - "'placeholder' not in (log_watcher_api_token | lower)"
+          - "'placeholder' not in (parallaxd_mcp_token | lower)"
+          - "'placeholder' not in (rendercase_oauth_client_id | lower)"
+          - "'placeholder' not in (rendercase_oauth_client_secret | lower)"
+          - "'placeholder' not in (rilldns_mcp_token | lower)"
+          - "'placeholder' not in (tintwire_oauth_client_id | lower)"
+          - "'placeholder' not in (tintwire_oauth_client_secret | lower)"
+          - "'placeholder' not in (wayminder_mcp_token | lower)"
+        fail_msg: Populate ansible/private.yml with deployment URLs and credentials.
+      no_log: true
+      when: not (switchboard_reuse_upstream_credentials | default(false) | bool)
+
+    - name: Inspect existing environment for an in-place credential-preserving upgrade
+      ansible.builtin.stat:
+        path: /etc/switchboard/switchboard.env
+      register: switchboard_existing_environment
+      when: switchboard_reuse_upstream_credentials | default(false) | bool
+
+    - name: Require the existing protected server environment for upgrade mode
+      ansible.builtin.assert:
+        that:
+          - switchboard_existing_environment.stat.isreg | default(false)
+          - switchboard_existing_environment.stat.uid == 0
+          - switchboard_existing_environment.stat.mode in ['0600', '0640']
+      when: switchboard_reuse_upstream_credentials | default(false) | bool
+
+    - name: Validate client credential environment names and token strength
+      ansible.builtin.assert:
+        that:
+          - item.key is match('^SWITCHBOARD_CLIENT_[A-Z0-9_]+$')
+          - item.value | length >= 32
+          - "'placeholder' not in (item.value | lower)"
+      loop: "{{ (switchboard_client_tokens | default({})) | dict2items }}"
+      no_log: true
+
+    - name: Validate client policy credential references
+      ansible.builtin.assert:
+        that:
+          - item.value.token_env in (switchboard_client_tokens | default({}))
+      loop: "{{ (switchboard_clients | default({})) | dict2items }}"
+      no_log: true
+
+    - name: Create local build directory
+      ansible.builtin.file:
+        path: "{{ switchboard_build_dir }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Build Switchboard on the controller
+      ansible.builtin.command:
+        argv:
+          - go
+          - build
+          - -trimpath
+          - -ldflags=-s -w
+          - -o
+          - "{{ switchboard_binary }}"
+          - ./cmd/switchboard
+        chdir: "{{ playbook_dir }}/.."
+      environment:
+        GOCACHE: /tmp/switchboard-ansible-go-cache
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: true
+
+  tasks:
+    - name: Install runtime prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - openssh-client
+        state: present
+        update_cache: true
+
+    - name: Create Switchboard system account
+      ansible.builtin.user:
+        name: switchboard
+        system: true
+        home: /nonexistent
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Create Switchboard configuration directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: root
+        group: switchboard
+        mode: "{{ item.mode }}"
+      loop:
+        - {path: /etc/switchboard, mode: "0750"}
+        - {path: /etc/switchboard/capabilities, mode: "0750"}
+        - {path: /etc/switchboard/ssh, mode: "0750"}
+
+    - name: Generate the restricted Parallaxd tunnel key
+      ansible.builtin.command:
+        argv:
+          - ssh-keygen
+          - -q
+          - -t
+          - ed25519
+          - -N
+          - ""
+          - -C
+          - switchboard-parallaxd
+          - -f
+          - /etc/switchboard/ssh/parallaxd
+        creates: /etc/switchboard/ssh/parallaxd
+
+    - name: Secure the Parallaxd tunnel key files
+      ansible.builtin.file:
+        path: "/etc/switchboard/ssh/parallaxd{{ item.suffix }}"
+        owner: switchboard
+        group: switchboard
+        mode: "{{ item.mode }}"
+      loop:
+        - {suffix: "", mode: "0600"}
+        - {suffix: ".pub", mode: "0644"}
+
+    - name: Read the Parallaxd tunnel public key
+      ansible.builtin.slurp:
+        src: /etc/switchboard/ssh/parallaxd.pub
+      register: switchboard_parallaxd_public_key
+
+    - name: Authorize the port-limited Switchboard key on Parallaxd
+      ansible.posix.authorized_key:
+        user: "{{ hostvars[groups['parallaxd_tunnel'][0]].ansible_user }}"
+        key: "{{ switchboard_parallaxd_public_key.content | b64decode | trim }}"
+        key_options: 'restrict,port-forwarding,permitopen="127.0.0.1:8972"'
+        state: present
+      delegate_to: "{{ groups['parallaxd_tunnel'][0] }}"
+      become: false
+
+    - name: Read the authoritative Parallaxd SSH host key
+      ansible.builtin.command: cat /etc/ssh/ssh_host_ed25519_key.pub
+      delegate_to: "{{ groups['parallaxd_tunnel'][0] }}"
+      become: true
+      register: switchboard_parallaxd_host_key
+      changed_when: false
+
+    - name: Pin the Parallaxd SSH host key
+      ansible.builtin.copy:
+        content: >-
+          {{ ('[' + hostvars[groups['parallaxd_tunnel'][0]].ansible_host + ']:' + (hostvars[groups['parallaxd_tunnel'][0]].ansible_port | default(22) | string)) if (hostvars[groups['parallaxd_tunnel'][0]].ansible_port | default(22) | int) != 22 else hostvars[groups['parallaxd_tunnel'][0]].ansible_host }}
+          {{ switchboard_parallaxd_host_key.stdout.split()[0] }}
+          {{ switchboard_parallaxd_host_key.stdout.split()[1] }}
+        dest: /etc/switchboard/ssh/known_hosts
+        owner: switchboard
+        group: switchboard
+        mode: "0644"
+      notify: Restart Parallaxd tunnel
+
+    - name: Install the Parallaxd tunnel service
+      ansible.builtin.template:
+        src: switchboard-parallaxd-tunnel.service.j2
+        dest: /etc/systemd/system/switchboard-parallaxd-tunnel.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Parallaxd tunnel
+
+    - name: Enable and start the Parallaxd tunnel
+      ansible.builtin.systemd_service:
+        name: switchboard-parallaxd-tunnel
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply pending tunnel restart
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify the Parallaxd tunnel listener
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 18972
+        timeout: 20
+
+    - name: Install Switchboard binary
+      ansible.builtin.copy:
+        src: "{{ switchboard_binary }}"
+        dest: /usr/local/bin/switchboard
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart Switchboard
+
+    - name: Install capability manifests
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../capabilities/{{ item }}.example.json"
+        dest: "/etc/switchboard/capabilities/{{ item }}.json"
+        owner: root
+        group: switchboard
+        mode: "0640"
+      loop: "{{ switchboard_capabilities }}"
+      notify: Restart Switchboard
+
+    - name: Install Switchboard configuration
+      ansible.builtin.template:
+        src: switchboard.json.j2
+        dest: /etc/switchboard/switchboard.json
+        owner: root
+        group: switchboard
+        mode: "0640"
+      notify: Restart Switchboard
+
+    - name: Install Switchboard secret environment
+      ansible.builtin.template:
+        src: switchboard.env.j2
+        dest: /etc/switchboard/switchboard.env
+        owner: root
+        group: switchboard
+        mode: "0640"
+      no_log: true
+      when: not (switchboard_reuse_upstream_credentials | default(false) | bool)
+      notify: Restart Switchboard
+
+    - name: Update only client credentials during an in-place upgrade
+      ansible.builtin.blockinfile:
+        path: /etc/switchboard/switchboard.env
+        marker: "# {mark} SWITCHBOARD CLIENT CREDENTIALS"
+        block: |
+          {% for name, value in (switchboard_client_tokens | default({})).items() %}
+          {{ name }}={{ value | to_json }}
+          {% endfor %}
+        owner: root
+        group: switchboard
+        mode: "0640"
+      when: switchboard_reuse_upstream_credentials | default(false) | bool
+      no_log: true
+      notify: Restart Switchboard
+
+    - name: Install Switchboard systemd unit
+      ansible.builtin.template:
+        src: switchboard.service.j2
+        dest: /etc/systemd/system/switchboard.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Switchboard
+
+    - name: Enable and start Switchboard
+      ansible.builtin.systemd_service:
+        name: switchboard
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply pending service restart
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify Switchboard readiness
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8090/readyz
+        status_code: 204
+      register: switchboard_readiness
+      retries: 15
+      delay: 2
+      until: switchboard_readiness.status == 204
+
+  handlers:
+    - name: Restart Parallaxd tunnel
+      ansible.builtin.systemd_service:
+        name: switchboard-parallaxd-tunnel
+        state: restarted
+        daemon_reload: true
+
+    - name: Restart Switchboard
+      ansible.builtin.systemd_service:
+        name: switchboard
+        state: restarted
+        daemon_reload: true

@@ -1,0 +1,66 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+      - name: Verify native runner architecture
+        run: test "$(go env GOHOSTARCH)" = "${{ matrix.arch }}"
+      - name: Formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Tests with race detection
+        run: go test -race ./...
+      - name: Static checks
+        run: go vet ./...
+      - name: Release tooling tests and source privacy check
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/privacy-audit.py --worktree-only
+      - name: Build native Linux review archive
+        run: python3 scripts/build-release.py --version 0.0.0-ci --target linux/${{ matrix.arch }} --output dist/review
+      - name: Verify archives and native MCP startup
+        run: python3 scripts/smoke-release.py dist/review --version 0.0.0-ci
+  pi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '24']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: clients/pi/package-lock.json
+      - name: Install exact dependencies without lifecycle scripts
+        run: npm ci --prefix clients/pi --ignore-scripts --no-audit --no-fund
+      - name: Synthetic HTTPS adapter tests
+        run: npm test --prefix clients/pi
+      - name: Build pi source review bundle
+        run: python3 scripts/build-pi-review.py --output dist/pi-review
+      - name: Verify pi bundle and clean runtime installation
+        run: python3 scripts/smoke-pi-review.py dist/pi-review

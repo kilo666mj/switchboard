@@ -1,0 +1,17 @@
+/switchboard
+/switchboard.json
+/capabilities/*.json
+!/capabilities/*.example.json
+/ansible/inventory.ini
+/ansible/private.yml
+/ansible/oauth.env
+/ansible/switchboard_token
+/ansible/.build/
+
+__pycache__/
+
+node_modules/
+
+/ansible/bootstrap-inventory.yml
+
+/dist/

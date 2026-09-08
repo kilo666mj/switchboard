@@ -1,0 +1,12 @@
+{
+  "listen": "127.0.0.1:8090",
+  "transport": "http",
+  "profile": "all",
+  "capability_dir": "/etc/switchboard/capabilities",
+  "behind_loopback_proxy": true,
+  "trusted_origins": [{{ switchboard_public_origin | to_json }}],
+  "session_limit": {{ switchboard_session_limit | default(256) | int }},
+  "session_idle_seconds": {{ switchboard_session_idle_seconds | default(1800) | int }},
+  "clients": {{ switchboard_clients | default({}) | to_json }},
+  "profiles": {{ switchboard_profiles | default({'all': switchboard_capabilities}) | to_json }}
+}

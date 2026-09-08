@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "agent",
+  "endpoint_env": "AGENT_RELAY_MCP_URL",
+  "headers": {
+    "Authorization": {
+      "env": "AGENT_RELAY_MCP_TOKEN",
+      "prefix": "Bearer "
+    }
+  }
+}

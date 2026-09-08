@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "rendercase",
+  "title": "Rendercase",
+  "tags": ["artifacts", "html", "publishing"],
+  "risk": "unknown",
+  "description": "Create and manage hosted HTML artifacts.",
+  "endpoint_env": "RENDERCASE_MCP_URL",
+  "host_env": "RENDERCASE_MCP_HOST",
+  "oauth_client_credentials": {
+    "token_url_env": "SWITCHBOARD_OAUTH_TOKEN_URL",
+    "client_id_env": "RENDERCASE_OAUTH_CLIENT_ID",
+    "client_secret_env": "RENDERCASE_OAUTH_CLIENT_SECRET",
+    "scopes": ["rendercase:mcp"],
+    "auth_style": "params",
+    "parameters": {
+      "resource": {"env": "RENDERCASE_OAUTH_RESOURCE"}
+    }
+  }
+}

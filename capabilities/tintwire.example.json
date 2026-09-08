@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "tintwire",
+  "title": "Tintwire",
+  "tags": ["messaging"],
+  "risk": "unknown",
+  "description": "Access Tintwire messaging tools.",
+  "endpoint_env": "TINTWIRE_MCP_URL",
+  "oauth_client_credentials": {
+    "token_url_env": "SWITCHBOARD_OAUTH_TOKEN_URL",
+    "client_id_env": "TINTWIRE_OAUTH_CLIENT_ID",
+    "client_secret_env": "TINTWIRE_OAUTH_CLIENT_SECRET",
+    "scopes": ["tintwire:mcp"],
+    "auth_style": "params",
+    "parameters": {
+      "resource": {"env": "TINTWIRE_OAUTH_RESOURCE"}
+    }
+  }
+}

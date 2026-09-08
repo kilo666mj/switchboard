@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "wayminder",
+  "title": "Wayminder",
+  "tags": ["memory", "agents", "knowledge"],
+  "risk": "unknown",
+  "description": "Recall and maintain durable agent memories.",
+  "endpoint_env": "WAYMINDER_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "WAYMINDER_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}

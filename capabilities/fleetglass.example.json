@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "fleetglass",
+  "title": "Fleetglass",
+  "tags": ["infrastructure", "inventory", "fleet"],
+  "risk": "unknown",
+  "description": "Inspect infrastructure inventory and fleet state.",
+  "endpoint_env": "FLEETGLASS_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "FLEETGLASS_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}

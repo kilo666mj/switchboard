@@ -1,0 +1,57 @@
+---
+- name: Create pi adapter and rollback directories
+  ansible.builtin.file:
+    path: "{{ switchboard_client_home }}/.pi/agent/{{ directory }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - extensions/switchboard
+    - switchboard-backups
+  loop_control:
+    loop_var: directory
+
+- name: Install pi adapter source and pinned dependency lock
+  ansible.builtin.copy:
+    src: "../clients/pi/{{ source_file }}"
+    dest: "{{ switchboard_client_home }}/.pi/agent/extensions/switchboard/{{ source_file }}"
+    mode: "0600"
+  loop:
+    - index.ts
+    - package.json
+    - package-lock.json
+  loop_control:
+    loop_var: source_file
+  register: pi_adapter_source
+
+- name: Check pi dependencies
+  ansible.builtin.stat:
+    path: "{{ switchboard_client_home }}/.pi/agent/extensions/switchboard/node_modules/@modelcontextprotocol/sdk/package.json"
+  register: pi_dependencies
+
+- name: Install pinned pi runtime dependencies without lifecycle scripts
+  ansible.builtin.command:
+    argv: [npm, ci, --omit=dev, --ignore-scripts]
+    chdir: "{{ switchboard_client_home }}/.pi/agent/extensions/switchboard"
+  when: pi_adapter_source is changed or not pi_dependencies.stat.exists
+  changed_when: true
+
+- name: Configure pi gateway URL and credential reference
+  ansible.builtin.copy:
+    content: "{{ {'url': switchboard_session_url, 'token_env': switchboard_clients[item.identity].token_env} | to_nice_json }}\n"
+    dest: "{{ switchboard_client_home }}/.pi/agent/switchboard.json"
+    mode: "0600"
+    backup: true
+
+- name: Check for the previous direct Wayminder extension
+  ansible.builtin.stat:
+    path: "{{ switchboard_client_home }}/.pi/agent/extensions/wayminder"
+  register: direct_wayminder
+
+- name: Archive the direct Wayminder extension after installing its gateway replacement
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ switchboard_client_home }}/.pi/agent/extensions/wayminder"
+      - "{{ switchboard_client_home }}/.pi/agent/switchboard-backups/wayminder-{{ ansible_facts.date_time.epoch }}"
+  when: direct_wayminder.stat.exists
+  changed_when: true

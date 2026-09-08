@@ -1,0 +1,31 @@
+[Unit]
+Description=Switchboard MCP capability gateway
+After=network-online.target switchboard-parallaxd-tunnel.service
+Wants=network-online.target
+Requires=switchboard-parallaxd-tunnel.service
+
+[Service]
+Type=simple
+User=switchboard
+Group=switchboard
+EnvironmentFile=/etc/switchboard/switchboard.env
+ExecStart=/usr/local/bin/switchboard -config /etc/switchboard/switchboard.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

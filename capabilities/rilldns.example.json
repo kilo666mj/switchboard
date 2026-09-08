@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "rilldns",
+  "title": "RillDNS",
+  "tags": ["dns", "network", "infrastructure"],
+  "risk": "unknown",
+  "description": "Inspect and manage DNS through upstream plan and confirmation workflows.",
+  "endpoint_env": "RILLDNS_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "RILLDNS_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}

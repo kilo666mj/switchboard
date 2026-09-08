@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "forgejo",
+  "title": "Forgejo",
+  "tags": ["git", "repositories", "issues"],
+  "risk": "unknown",
+  "description": "Work with repositories, issues, and pull requests.",
+  "endpoint_env": "FORGEJO_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "FORGEJO_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}

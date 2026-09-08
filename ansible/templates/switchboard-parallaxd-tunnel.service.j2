@@ -1,0 +1,21 @@
+[Unit]
+Description=Restricted SSH tunnel from Switchboard to Parallaxd MCP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=switchboard
+Group=switchboard
+ExecStart=/usr/bin/ssh -NT -p {{ hostvars[groups['parallaxd_tunnel'][0]].ansible_port | default(22) }} -i /etc/switchboard/ssh/parallaxd -o UserKnownHostsFile=/etc/switchboard/ssh/known_hosts -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:18972:127.0.0.1:8972 {{ hostvars[groups['parallaxd_tunnel'][0]].ansible_user }}@{{ hostvars[groups['parallaxd_tunnel'][0]].ansible_host }}
+Restart=always
+RestartSec=5s
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

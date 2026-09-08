@@ -1,0 +1,123 @@
+---
+- name: Bootstrap managed Switchboard clients
+  hosts: switchboard_clients
+  gather_facts: true
+  vars_files:
+    - private.yml
+  vars:
+    managed_installations: "{{ switchboard_installations | default([{'client': 'codex', 'identity': switchboard_client_identity | default('')}]) }}"
+    config_paths:
+      codex: .codex/config.toml
+      claude: .claude.json
+      opencode: .config/opencode/opencode.jsonc
+      qwen: .qwen/settings.json
+  tasks:
+    - name: Validate client installation inputs
+      ansible.builtin.assert:
+        that:
+          - switchboard_client_home is defined
+          - item.client in ['codex', 'claude', 'opencode', 'qwen', 'pi']
+          - item.identity in switchboard_clients
+          - switchboard_clients[item.identity].token_env in switchboard_client_tokens
+          - switchboard_session_url is match('^https://')
+      loop: "{{ managed_installations }}"
+      no_log: true
+
+    - name: Install the operator-provided private CA certificate
+      ansible.builtin.copy:
+        src: "{{ switchboard_ca_file }}"
+        dest: "{{ {'Debian': '/usr/local/share/ca-certificates/switchboard.crt', 'RedHat': '/etc/pki/ca-trust/source/anchors/switchboard.crt', 'Archlinux': '/etc/ca-certificates/trust-source/anchors/switchboard.crt'}[ansible_facts.os_family] }}"
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+      when: switchboard_ca_file | default('') | length > 0
+      register: switchboard_ca_install
+
+    - name: Refresh system CA trust after installing the private CA
+      ansible.builtin.command:
+        argv: "{{ ['update-ca-certificates'] if ansible_facts.os_family == 'Debian' else ['update-ca-trust', 'extract'] }}"
+      become: true
+      when: switchboard_ca_install is changed
+      changed_when: true
+
+    - name: Verify system CA trust and authenticated session endpoint
+      ansible.builtin.command:
+        argv:
+          - curl
+          - --silent
+          - --show-error
+          - --max-time
+          - '30'
+          - --output
+          - /dev/null
+          - --write-out
+          - '%{http_code}'
+          - --request
+          - POST
+          - --header
+          - 'Content-Type: application/json'
+          - --data
+          - '{}'
+          - --config
+          - '-'
+          - "{{ switchboard_session_url }}"
+        stdin: 'header = {{ ("Authorization: Bearer " + switchboard_client_tokens[switchboard_clients[item.identity].token_env]) | to_json }}'
+      loop: "{{ managed_installations }}"
+      register: switchboard_tls_check
+      changed_when: false
+      failed_when: switchboard_tls_check.rc != 0 or switchboard_tls_check.stdout != '400'
+      no_log: true
+
+    - name: Create protected client directories
+      ansible.builtin.file:
+        path: "{{ switchboard_client_home }}/{{ item }}"
+        state: directory
+        mode: "0700"
+      loop:
+        - .config/environment.d
+        - .local/bin
+        - .codex
+        - .config/opencode
+        - .qwen
+
+    - name: Install installation-specific gateway credentials
+      ansible.builtin.copy:
+        content: |
+          {% for installation in managed_installations %}
+          {{ switchboard_clients[installation.identity].token_env }}={{ switchboard_client_tokens[switchboard_clients[installation.identity].token_env] | to_json }}
+          {% endfor %}
+          {% if switchboard_node_ca_bundle | default('') | length > 0 %}
+          NODE_EXTRA_CA_CERTS={{ switchboard_node_ca_bundle | to_json }}
+          {% endif %}
+        dest: "{{ switchboard_client_home }}/.config/environment.d/92-switchboard.conf"
+        mode: "0600"
+        backup: true
+      no_log: true
+
+    - name: Install the configuration bootstrap helper
+      ansible.builtin.copy:
+        src: ../scripts/switchboard-connect.py
+        dest: "{{ switchboard_client_home }}/.local/bin/switchboard-connect"
+        mode: "0700"
+
+    - name: Configure each native MCP client
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ switchboard_client_home }}/.local/bin/switchboard-connect"
+          - --client
+          - "{{ item.client }}"
+          - --config
+          - "{{ item.config | default(switchboard_client_home + '/' + config_paths[item.client]) }}"
+          - --url
+          - "{{ switchboard_session_url }}"
+          - --token-env
+          - "{{ switchboard_clients[item.identity].token_env }}"
+      loop: "{{ managed_installations | rejectattr('client', 'equalto', 'pi') | list }}"
+      register: switchboard_bootstrap
+      changed_when: (switchboard_bootstrap.stdout | from_json).changed
+
+    - name: Install pi adapter
+      ansible.builtin.include_tasks: bootstrap-pi.yml
+      loop: "{{ managed_installations | selectattr('client', 'equalto', 'pi') | list }}"

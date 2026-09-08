@@ -1,0 +1,43 @@
+# Copy to private.yml (ignored), use deployment-specific URLs, and source all
+# credential values from your secret manager. Never commit the populated file.
+switchboard_public_origin: https://switchboard.example.internal
+switchboard_bearer_token: "{{ lookup('ansible.builtin.password', playbook_dir + '/switchboard_token', length=64, chars=['hexdigits']) }}"
+
+switchboard_oauth_token_url: https://id.example.com/api/oidc/token
+
+fleetglass_mcp_url: https://fleetglass.example.internal/mcp
+fleetglass_mcp_token: replace-me
+forgejo_mcp_url: https://forgejo-mcp.example.internal/mcp
+forgejo_mcp_token: "{{ lookup('ansible.builtin.env', 'FORGEJO_MCP_TOKEN') }}"
+log_watcher_api_url: http://log-watcher-vip.example.internal:8080
+log_watcher_api_token: "{{ lookup('ansible.builtin.env', 'LOG_WATCHER_API_TOKEN') }}"
+parallaxd_mcp_url: https://status.example.internal/mcp
+parallaxd_mcp_token: replace-me
+rendercase_mcp_url: https://rendercase.example.internal/mcp
+rendercase_mcp_host: rendercase.example.com
+rendercase_oauth_client_id: switchboard
+rendercase_oauth_client_secret: "{{ lookup('ansible.builtin.ini', 'SWITCHBOARD_OIDC_CLIENT_SECRET type=properties file=' + playbook_dir + '/oauth.env') }}"
+rendercase_oauth_resource: https://rendercase.example.internal/mcp
+rilldns_mcp_url: https://dns.example.internal/mcp
+rilldns_mcp_token: replace-me
+tintwire_mcp_url: https://tintwire.example.internal/mcp
+tintwire_oauth_client_id: switchboard
+tintwire_oauth_client_secret: "{{ lookup('ansible.builtin.ini', 'SWITCHBOARD_OIDC_CLIENT_SECRET type=properties file=' + playbook_dir + '/oauth.env') }}"
+tintwire_oauth_resource: https://tintwire.example.internal/mcp
+wayminder_mcp_url: https://wayminder.example.internal/mcp
+wayminder_mcp_token: replace-me
+
+# Optional per-installation clients at /mcp/sessions. Use a different random token
+# for every installation. Retain the legacy bearer during a staged migration.
+switchboard_clients: {}
+switchboard_client_tokens: {}
+# switchboard_clients:
+#   workstation:
+#     token_env: SWITCHBOARD_CLIENT_WORKSTATION
+#     profile: all
+#     initial_capabilities: [wayminder]
+#     discover: true
+#     execute: true
+#     activate: true
+# switchboard_client_tokens:
+#   SWITCHBOARD_CLIENT_WORKSTATION: generate-a-unique-random-token

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "parallaxd",
+  "title": "Parallaxd",
+  "tags": ["agents", "orchestration"],
+  "risk": "unknown",
+  "description": "Access Parallaxd agent orchestration tools.",
+  "endpoint_env": "PARALLAXD_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "PARALLAXD_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}
