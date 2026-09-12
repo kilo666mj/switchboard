@@ -8,6 +8,7 @@ import (
 
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -28,7 +29,7 @@ type searchOutput struct {
 	Total        int              `json:"total"`
 }
 
-func registerCatalog(server *mcp.Server, items []capability.Capability) {
+func registerCatalog(server *mcp.Server, items []capability.Capability, policy config.ToolPolicy) {
 	entries := make([]capability.Description, 0, len(items))
 	for _, item := range items {
 		d := capability.Description{Name: item.Name(), Tools: []capability.ToolSummary{}}
@@ -42,6 +43,13 @@ func registerCatalog(server *mcp.Server, items []capability.Capability) {
 		if d.Title == "" {
 			d.Title = d.Name
 		}
+		visible := make([]capability.ToolSummary, 0, len(d.Tools))
+		for _, tool := range d.Tools {
+			if toolVisible(policy, d.Name, tool.Name) {
+				visible = append(visible, tool)
+			}
+		}
+		d.Tools = visible
 		sort.Slice(d.Tools, func(i, j int) bool { return d.Tools[i].Name < d.Tools[j].Name })
 		entries = append(entries, d)
 	}

@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/mcpkit/mcpkittest"
 	capbase "github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/config"
+	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -66,6 +69,33 @@ func TestExposedNameAvoidsDoublePrefix(t *testing.T) {
 	}
 }
 
+func TestAnnotationRules(t *testing.T) {
+	falseValue := false
+	rules := []AnnotationRule{
+		{Prefixes: []string{"get_", "list_"}, Annotations: mcp.ToolAnnotations{ReadOnlyHint: true, DestructiveHint: &falseValue, IdempotentHint: true}},
+		{Prefixes: []string{"create_"}, Annotations: mcp.ToolAnnotations{DestructiveHint: &falseValue}},
+	}
+
+	annotations, err := matchAnnotations("list_workflow_runs", rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !annotations.ReadOnlyHint || annotations.DestructiveHint == nil || *annotations.DestructiveHint {
+		t.Fatalf("unexpected read annotations: %+v", annotations)
+	}
+	if _, err := matchAnnotations("delete_repo", rules); err == nil {
+		t.Fatal("unclassified tool was accepted")
+	}
+	if _, err := matchAnnotations("list_create_conflict", []AnnotationRule{
+		{Prefixes: []string{"list_"}}, {Prefixes: []string{"list_create_"}},
+	}); err == nil {
+		t.Fatal("overlapping rules were accepted")
+	}
+	if _, err := matchAnnotations("anything", []AnnotationRule{{Prefixes: []string{""}}}); err == nil {
+		t.Fatal("empty prefix was accepted")
+	}
+}
+
 func TestCapabilityUsesOAuthClientCredentials(t *testing.T) {
 	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "rendercase", Version: "test"})
 	mcp.AddTool(upstream, &mcp.Tool{Name: "rendercase_list", Description: "List"},
@@ -116,6 +146,84 @@ func TestCapabilityUsesOAuthClientCredentials(t *testing.T) {
 	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "rendercase_list", Arguments: map[string]any{}})
 	if err != nil || result.IsError {
 		t.Fatalf("OAuth-backed call failed: result=%#v error=%v", result, err)
+	}
+}
+
+func TestCapabilityRejectsRedirectBeforeSendingCredentialToDestination(t *testing.T) {
+	var destinationRequests atomic.Int32
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		destinationRequests.Add(1)
+		http.Error(w, "credential destination reached", http.StatusInternalServerError)
+	}))
+	defer destination.Close()
+
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Redirect(w, nil, destination.URL, http.StatusTemporaryRedirect)
+	}))
+	defer redirector.Close()
+	t.Setenv("UPSTREAM_TOKEN", "redirect-canary")
+
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: redirector.URL,
+		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
+	}); err == nil {
+		item.Close()
+		t.Fatal("redirected MCP endpoint was accepted")
+	}
+	if got := destinationRequests.Load(); got != 0 {
+		t.Fatalf("redirect destination received %d requests", got)
+	}
+}
+
+func TestOAuthTokenRequestRejectsRedirect(t *testing.T) {
+	var destinationRequests atomic.Int32
+	destination := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		destinationRequests.Add(1)
+		http.Error(w, "credential destination reached", http.StatusInternalServerError)
+	}))
+	defer destination.Close()
+
+	redirector := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Redirect(w, nil, destination.URL, http.StatusTemporaryRedirect)
+	}))
+	defer redirector.Close()
+	t.Setenv("OAUTH_CLIENT_ID", "switchboard")
+	t.Setenv("OAUTH_CLIENT_SECRET", "redirect-canary")
+
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: redirector.URL, InsecureSkipVerify: true,
+		OAuth: &OAuthClientCredentials{
+			TokenURL: redirector.URL, ClientIDEnv: "OAUTH_CLIENT_ID", ClientSecretEnv: "OAUTH_CLIENT_SECRET",
+		},
+	}); err == nil {
+		item.Close()
+		t.Fatal("redirected OAuth token endpoint was accepted")
+	}
+	if got := destinationRequests.Load(); got != 0 {
+		t.Fatalf("OAuth redirect destination received %d requests", got)
+	}
+}
+
+func TestCapabilityEgressPolicyRejectsUnsafeConfiguration(t *testing.T) {
+	policy, err := egress.New(config.EgressPolicy{
+		AllowedDestinations: []string{"api.example.internal:443"},
+		AllowedCIDRs:        []string{"192.0.2.0/24"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, manifest := range []Manifest{
+		{Version: 1, Type: "mcp", Name: "test", Endpoint: "http://api.example.internal/mcp"},
+		{Version: 1, Type: "mcp", Name: "test", Endpoint: "https://api.example.internal/mcp", InsecureSkipVerify: true},
+		{Version: 1, Type: "mcp", Name: "test", Endpoint: "https://other.example.internal/mcp"},
+		{Version: 1, Type: "mcp", Name: "test", Endpoint: "https://api.example.internal/mcp", OAuth: &OAuthClientCredentials{TokenURL: "https://id.example.internal/token", ClientIDEnv: "ID", ClientSecretEnv: "SECRET"}},
+	} {
+		t.Setenv("ID", "switchboard")
+		t.Setenv("SECRET", "secret")
+		if item, err := NewWithEgress(t.Context(), manifest, policy); err == nil {
+			item.Close()
+			t.Fatalf("unsafe manifest accepted: %+v", manifest)
+		}
 	}
 }
 

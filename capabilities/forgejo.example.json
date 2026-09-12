@@ -3,11 +3,25 @@
   "type": "mcp",
   "name": "forgejo",
   "title": "Forgejo",
-  "tags": ["git", "repositories", "issues"],
-  "risk": "unknown",
-  "description": "Work with repositories, issues, and pull requests.",
+  "tags": ["git", "repositories", "issues", "pull-requests", "branches", "releases", "ci", "actions", "workflows", "checks"],
+  "risk": "destructive",
+  "description": "Work with Forgejo repositories, files, branches, issues, pull requests, reviews, releases, webhooks, and Actions workflows, runs, jobs, logs, artifacts, and checks.",
   "endpoint_env": "FORGEJO_MCP_URL",
   "headers": {
     "Authorization": {"env": "FORGEJO_MCP_TOKEN", "prefix": "Bearer "}
-  }
+  },
+  "annotation_rules": [
+    {
+      "prefixes": ["check_", "download_", "get_", "list_", "search_"],
+      "annotations": {"readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": true}
+    },
+    {
+      "prefixes": ["cancel_", "delete_", "dismiss_", "merge_", "remove_", "reset_"],
+      "annotations": {"readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": true}
+    },
+    {
+      "prefixes": ["add_", "create_", "dispatch_", "edit_", "fork_", "issue_state_change", "mark_", "set_", "start_", "stop_", "submit_", "test_", "update_"],
+      "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true}
+    }
+  ]
 }

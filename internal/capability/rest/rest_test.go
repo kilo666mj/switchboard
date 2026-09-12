@@ -8,6 +8,8 @@ import (
 
 	"github.com/kilo666mj/mcpkit/mcpkittest"
 	capbase "github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/config"
+	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -62,5 +64,18 @@ func TestManifestRejectsReadOnlyPost(t *testing.T) {
 	manifest := Manifest{Version: 1, Name: "test", BaseURL: "https://example.com", Tools: []Tool{{Name: "read", Description: "read", Method: "POST", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}}
 	if err := manifest.Validate(); err == nil {
 		t.Fatal("Validate succeeded with a read-only POST")
+	}
+}
+
+func TestCapabilityEgressPolicyRequiresAllowedHTTPSDestination(t *testing.T) {
+	policy, err := egress.New(config.EgressPolicy{AllowedDestinations: []string{"api.example.internal:443"}, AllowedCIDRs: []string{"192.0.2.0/24"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, baseURL := range []string{"http://api.example.internal", "https://other.example.internal"} {
+		manifest := Manifest{Version: 1, Name: "test", BaseURL: baseURL, Tools: []Tool{{Name: "read", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}}
+		if item, err := NewWithEgress(manifest, policy); err == nil {
+			t.Fatalf("unsafe base URL accepted by %#v", item)
+		}
 	}
 }

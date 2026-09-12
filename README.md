@@ -7,6 +7,11 @@ Applications keep their business rules, state, authorization, auditing, and
 safety workflows. Switchboard owns MCP transport, profile-based capability
 composition, API adaptation, and client-facing tool descriptions.
 
+Switchboard can be the only client-reachable MCP endpoint while upstream MCPs
+remain on loopback or private service networks. OAuth or Cloudflare Access group
+claims can map callers to composable, exact-tool entitlements. See
+[Group entitlements and private MCP gateways](docs/group-entitlements.md).
+
 ## Status
 
 The initial implementation provides:
@@ -18,9 +23,12 @@ The initial implementation provides:
 - federation of existing Streamable HTTP MCP servers;
 - environment-referenced upstream URLs and credentials;
 - read-only, mutating, and destructive MCP annotations;
-- bounded upstream responses, timeouts, and redirect rejection;
-- loopback-only unauthenticated HTTP, or bearer authentication when exposed;
-- health and readiness endpoints.
+- bounded upstream responses, timeouts, and redirect rejection for REST, MCP,
+  and OAuth token requests;
+- loopback-only unauthenticated HTTP, static bearer authentication, OAuth/OIDC
+  JWT resource-server authentication, or Cloudflare Access assertions for
+  identity-bound sessions;
+- health, readiness, and Prometheus-compatible metrics endpoints.
 
 Specialized Go capabilities can implement the small `Capability` interface when
 an operation needs richer orchestration than a safe HTTP mapping can express.
@@ -37,12 +45,13 @@ export RILLDNS_MCP_TOKEN=replace-me
 go run ./cmd/switchboard -config switchboard.json
 ```
 
-Connect an MCP client to `http://127.0.0.1:8090/mcp`. The health endpoints are
-`/healthz` and `/readyz`.
+Connect an MCP client to `http://127.0.0.1:8090/mcp`. The operational endpoints
+are `/healthz`, `/readyz`, and `/metrics`.
 
-For a non-loopback listener, `SWITCHBOARD_BEARER_TOKEN` is mandatory. Clients
-must send it as an Authorization bearer token. Capability credentials use only
-environment-variable references:
+For a non-loopback stateless `/mcp` listener,
+`SWITCHBOARD_BEARER_TOKEN` is mandatory. The identity-bound `/mcp/sessions`
+endpoint instead requires configured static clients, OAuth, or Cloudflare
+Access. Capability credentials use only environment-variable references:
 
 ```json
 {
@@ -89,9 +98,44 @@ environment. Switchboard discovers upstream tools at startup,
 preserves schemas and annotations, adds the capability prefix when absent, and
 proxies calls without duplicating the product's tool definitions.
 
+When an upstream MCP omits or incorrectly applies behavior annotations, an
+operator may supply `annotation_rules`. Each rule contains one or more exact
+tool-name prefixes and a complete MCP `annotations` object. When rules are
+present, every selected upstream tool must match exactly one rule; startup fails
+for missing, empty, or overlapping classifications. This keeps annotation
+corrections explicit and prevents newly added upstream tools from silently
+receiving permissive metadata.
+
 Generic manifests should expose the upstream application's safe operations,
 not bypass them. A DNS mutation should still call an API operation that requires
 the expected revision, dry-run/plan identifiers, and explicit confirmation.
+
+## Production egress policy
+
+An optional top-level `egress_policy` creates a fail-closed outbound boundary:
+
+```json
+{
+  "egress_policy": {
+    "allowed_destinations": [
+      "inventory.example.internal:443",
+      "id.example.internal:443"
+    ],
+    "allowed_cidrs": ["192.0.2.0/24"]
+  }
+}
+```
+
+When present, every REST base URL, remote MCP endpoint, and OAuth token URL must
+use HTTPS and match an exact `host:port` entry. `insecure_skip_verify` is
+prohibited. Before each new connection, Switchboard resolves the hostname itself,
+rejects the complete DNS response if any address falls outside the configured
+CIDRs, and dials a validated IP directly. Environment HTTP proxies are disabled
+for these connections because they constitute a separate egress path. Include
+every intentional proxy, tunnel, loopback, or private-network destination
+explicitly. Omitting `egress_policy` preserves the existing operator-controlled
+endpoint behavior for compatibility; workplace production should configure it
+alongside infrastructure-level firewall rules.
 
 ## Catalog discovery
 
@@ -127,10 +171,34 @@ variable. For example, alongside the existing `profiles` configuration:
     "workstation": {
       "token_env": "SWITCHBOARD_CLIENT_WORKSTATION",
       "profile": "all",
-      "initial_capabilities": ["wayminder"],
+      "tool_policy": "workplace-read",
+      "limits": {
+        "requests_per_minute": 120,
+        "burst": 10,
+        "concurrency": 4
+      },
       "discover": true,
       "execute": true,
-      "activate": true
+      "activate": false
+    }
+  },
+  "tool_policies": {
+    "workplace-read": {
+      "version": "pilot-v1",
+      "profile": "all",
+      "capabilities": {
+        "fleetglass": "allow"
+      },
+      "tools": {
+        "wayminder_status": "allow"
+      },
+      "tool_limits": {
+        "wayminder_status": {
+          "requests_per_minute": 60,
+          "burst": 5,
+          "concurrency": 2
+        }
+      }
     }
   },
   "session_limit": 256,
@@ -139,12 +207,155 @@ variable. For example, alongside the existing `profiles` configuration:
 ```
 
 The server derives identity from the bearer credential on every request and
-binds each MCP session to that identity. Profiles bound the searchable catalog
-and executable capabilities. The three permissions default to false: `discover`
+binds each MCP session to that identity. Profiles bound the available
+capabilities. An optional named `tool_policy` authorizes whole capabilities with
+optional exact tool overrides and an auditable policy version. Its decisions are
+`allow`, `deny`, and `require_approval`; an exact tool decision overrides its
+capability decision, and otherwise omitted tools default to deny. References to
+capabilities outside the profile and stale explicit tool names fail startup.
+Only tools whose effective decision is `allow` appear in native discovery or the
+capability catalog. Denied tools remain blocked for stale client definitions and
+compatibility calls. `require_approval` fails closed and remains undiscoverable
+until a server-side approval workflow is configured.
+
+Capability-level `allow` is an explicit decision to trust that upstream MCP's
+current and future tool set. Switchboard still preserves the upstream tool
+schemas, safety annotations, authorization, and plan/confirm workflows. Use
+exact `tools` overrides to remove exceptional high-impact operations. Omitting
+`tool_policy` retains whole-profile execution for compatibility. The three
+permissions default to false: `discover`
 exposes search/describe, `execute` permits native and read-only compatibility
 calls, and `activate` permits session changes when execution is also allowed.
-Omit `initial_capabilities` to start with the whole allowed profile, or use `[]`
-to start with management tools only.
+Omit `initial_capabilities` to expose the whole allowed profile immediately;
+this is the recommended configuration when clients should use connected MCP
+tools without a separate activation step. Set an explicit subset only when
+reducing the initial tool catalog is worth requiring session activation.
+
+Optional client `limits` apply across every session belonging to that
+authenticated identity. A client may have a token-bucket rate limit and a
+non-blocking concurrency limit. A tool policy may add stricter `tool_limits` to
+an explicitly allowed tool. Limits use `requests_per_minute`, `burst`, and
+`concurrency`; zero values disable the corresponding limit. Rejections do not
+reach the upstream and are recorded by the same audit event as other calls.
+
+`GET /metrics` exposes Prometheus-compatible counters for authentication and
+authorization failures, session-capacity failures, an active-session gauge, and
+tool-call counts and duration sums split by capability, tool, decision, and
+outcome. It deliberately omits identities, arguments, results, and error text.
+Protect the endpoint at the reverse proxy or network layer because tool names
+and usage volumes may still be operationally sensitive.
+
+### OAuth resource-server authentication
+
+For short-lived user or workload identities, configure Switchboard as an OAuth
+resource server on `/mcp/sessions`:
+
+```json
+{
+  "oauth": {
+    "issuer": "https://id.example.com",
+    "resource": "https://switchboard.example.com/mcp/sessions",
+    "required_scopes": ["mcp:connect"],
+    "group_claim": "groups",
+    "group_source": "access_token",
+    "scope_claim": "scope",
+    "jwt_type": "at+jwt",
+    "allow_static_clients": true,
+    "policies": {
+      "workplace-readers": {
+        "version": "pilot-v1",
+        "groups": ["switchboard-readers"],
+        "required_scopes": ["tools:read"],
+        "profile": "all",
+        "tool_policy": "workplace-read",
+        "discover": true,
+        "execute": true,
+        "activate": false
+      }
+    }
+  }
+}
+```
+
+Switchboard discovers the configured issuer, verifies JWT signatures against
+its JWKS, and requires exact issuer, expiry, and `aud` resource validation. It
+then requires the configured scopes and maps the immutable `sub` plus exact
+group claims to gateway policy. In the default exclusive mode, more than one
+match is denied. When a policy contains both `subjects` and `groups`, both
+dimensions must match; any listed group satisfies the group dimension. Policy-specific
+scopes allow the authorization server's API permissions to constrain the local
+tool policy.
+
+`group_source` defaults to `access_token`. Set it to `userinfo` for providers
+that release groups only from their standard OIDC UserInfo endpoint. Switchboard
+first validates the access token, calls the discovered HTTPS UserInfo endpoint
+with that token, and requires the returned `sub` to equal the validated token
+subject before trusting the configured group claim. UserInfo lookup failures
+fail closed. UserInfo mode requires `openid` in `required_scopes`.
+
+Set `policy_mode` to `composed` when group memberships should contribute
+multiple entitlements. Composed policies must share one superset profile and
+must each reference an explicit tool policy. Effective decisions use
+deny-before-approval-before-allow precedence, limits only become stricter, and
+the deterministic effective-policy hash is bound to the session and audit. The
+default `exclusive` mode retains the single-match fail-closed behavior.
+
+For issuers such as Pocket ID 2.14 that identify access tokens with the protected
+JWT header `typ: at+jwt`, configure `jwt_type: "at+jwt"`. Switchboard checks that
+exact header value after verifying the signature, preventing ID-token substitution.
+Issuers using a payload claim can instead use `token_type_claim` and
+`token_type_value`; configuring both mechanisms requires both to match. If neither
+is configured, token separation relies on distinct access-token audiences and scopes.
+
+Validation is local JWT validation rather than token introspection. Individual
+token revocation therefore takes effect when the token expires unless the
+issuer removes its signing key; configure a short access-token lifetime.
+
+The configured resource must be the canonical external MCP endpoint without a
+trailing slash. Switchboard serves its RFC 9728 document at the corresponding
+path-specific `/.well-known/oauth-protected-resource/...` URL and includes that
+URL in authentication challenges. MCP clients must request the same `resource`
+in authorization and token requests and send the access token—not an ID token—
+on every MCP request.
+
+`allow_static_clients` defaults to false whenever OAuth is configured. Set it
+temporarily to migrate existing entries in `clients`, then remove those entries
+or leave the switch disabled. The separate legacy `/mcp` endpoint remains
+controlled by `SWITCHBOARD_BEARER_TOKEN`; unset that variable when migration is
+complete. OAuth issuer discovery and JWKS requests also obey `egress_policy`, so
+include every authorization-server destination they use.
+
+For Pocket ID, create an API whose resource exactly matches `oauth.resource`,
+define the scopes as API permissions, and grant user-delegated access to the
+approved clients. Client ID Metadata Documents can be enabled for compatible
+MCP clients; allowlist exact metadata-document URLs rather than wildcards. See
+[Pocket ID OAuth setup](docs/pocket-id.md) for the rollout checklist.
+
+### Cloudflare Access identity
+
+An ingress protected by Cloudflare Access can authenticate the same dynamic
+session endpoint using the edge-injected `Cf-Access-Jwt-Assertion` header. Set
+`cloudflare_access.team_domain`, the exact Access application `audience`, and
+subject/group policies that reference the same profiles and tool policies used
+by OAuth identities. Switchboard verifies the assertion signature against the
+team certs endpoint and requires its exact issuer, audience, expiry, `type: app`,
+stable subject, and email. Root and `custom.groups` claims are combined for
+exact policy matching. Audit identities are prefixed with
+`cloudflare_access:` to prevent collisions with OAuth subjects.
+
+Cloudflare Access is an additional inbound identity source; it is not advertised
+as an MCP OAuth authorization server. When OAuth is also configured, requests
+without an Access assertion retain the normal RFC 9728 OAuth challenge. A
+request containing both an Authorization credential and an Access assertion is
+rejected as ambiguous. Static clients stay enabled only when every configured
+identity provider explicitly enables its migration switch.
+
+Restrict the origin so clients cannot bypass Cloudflare, and configure the proxy
+to remove any client-supplied assertion before injecting its verified header.
+For the same agent path used by Rendercase, Cloudflare validates the client's
+bearer credential at the edge, removes `Authorization`, and injects the Access
+assertion for Switchboard. The Access team-domain certs URL is subject to
+Switchboard's egress policy and redirect and response-size restrictions.
 
 `capability_enable` and `capability_disable` take an exact capability `name`.
 They change only the current session's tool registry and send
@@ -193,8 +404,10 @@ content, and structured results are preserved. Calls have a two-minute deadline
 and inherit caller cancellation. Remote HTTP response bodies (JSON or SSE,
 including discovery and native calls) are limited to 8 MiB per response.
 
-Structured `capability_execute` audit events contain the profile, capability,
-exposed tool, outcome, and duration. They omit arguments, results, and error text.
+Structured audit events cover native and compatibility tool calls. They contain
+the authenticated identity (or `legacy-shared`), profile, session and gateway
+correlation identifiers, capability, exact exposed tool, policy version and
+decision, outcome, and duration. They omit arguments, results, and error text.
 The shared deployment credential still determines the active profile; this does
 not introduce per-client identities or activation. Mutating compatibility calls
 remain unavailable until an explicit confirmation workflow is designed.
@@ -234,6 +447,12 @@ existing system trust must validate the gateway. For Node-based clients that
 need the OS trust bundle explicitly, set `switchboard_node_ca_bundle`; bootstrap
 exports it as `NODE_EXTRA_CA_CERTS` without disabling certificate validation.
 Python 3.11+ and curl are required.
+
+This bootstrap is the static-token installation path. Codex can instead use its
+native MCP OAuth login, and Pi can use an OAuth-capable local extension backed
+by a Pocket ID public client and PKCE. Those client-specific flows are described
+in [Pocket ID OAuth setup](docs/pocket-id.md#client-setup). Do not combine an
+OAuth configuration with the bootstrap's bearer-token environment variable.
 
 The helper can also be run directly:
 

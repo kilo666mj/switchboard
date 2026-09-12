@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -36,7 +37,13 @@ type Manifest struct {
 	Headers            map[string]HeaderValue  `json:"headers,omitempty"`
 	OAuth              *OAuthClientCredentials `json:"oauth_client_credentials,omitempty"`
 	IncludeTools       []string                `json:"include_tools,omitempty"`
+	AnnotationRules    []AnnotationRule        `json:"annotation_rules,omitempty"`
 	InsecureSkipVerify bool                    `json:"insecure_skip_verify,omitempty"`
+}
+
+type AnnotationRule struct {
+	Prefixes    []string            `json:"prefixes"`
+	Annotations mcp.ToolAnnotations `json:"annotations"`
 }
 
 type OAuthClientCredentials struct {
@@ -73,6 +80,10 @@ type toolBinding struct {
 }
 
 func New(ctx context.Context, manifest Manifest) (*Capability, error) {
+	return NewWithEgress(ctx, manifest, nil)
+}
+
+func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy) (*Capability, error) {
 	if err := capability.ValidateRisk(manifest.Risk); err != nil {
 		return nil, err
 	}
@@ -96,6 +107,14 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return nil, fmt.Errorf("invalid MCP endpoint %q", endpoint)
 	}
+	if policy != nil {
+		if manifest.InsecureSkipVerify {
+			return nil, errors.New("insecure_skip_verify is prohibited by the egress policy")
+		}
+		if err := policy.ValidateURL(endpoint); err != nil {
+			return nil, fmt.Errorf("%s MCP endpoint violates egress policy: %w", manifest.Name, err)
+		}
+	}
 	host := ""
 	if manifest.HostEnv != "" {
 		host = strings.TrimSpace(os.Getenv(manifest.HostEnv))
@@ -113,6 +132,9 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 		headers.Set(name, value.Prefix+secret)
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if policy != nil {
+		transport = policy.Transport()
+	}
 	if manifest.InsecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit per-capability operator setting
 	}
@@ -125,10 +147,15 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 		if err != nil {
 			return nil, err
 		}
-		tokenContext := context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: transport, Timeout: 30 * time.Second})
+		if policy != nil {
+			if err := policy.ValidateURL(oauthConfig.TokenURL); err != nil {
+				return nil, fmt.Errorf("%s OAuth token URL violates egress policy: %w", manifest.Name, err)
+			}
+		}
+		tokenContext := context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: rejectRedirect})
 		roundTripper = &oauth2.Transport{Source: oauthConfig.TokenSource(tokenContext), Base: roundTripper}
 	}
-	httpClient := &http.Client{Timeout: 2 * time.Minute, Transport: roundTripper}
+	httpClient := &http.Client{Timeout: 2 * time.Minute, Transport: roundTripper, CheckRedirect: rejectRedirect}
 	client := mcp.NewClient(&mcp.Implementation{Name: "switchboard", Version: "dev"}, nil)
 	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient}, nil)
 	if err != nil {
@@ -148,6 +175,14 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 			continue
 		}
 		copy := *tool
+		if len(manifest.AnnotationRules) > 0 {
+			annotations, annotationErr := matchAnnotations(tool.Name, manifest.AnnotationRules)
+			if annotationErr != nil {
+				_ = session.Close()
+				return nil, fmt.Errorf("%s tool %q: %w", manifest.Name, tool.Name, annotationErr)
+			}
+			copy.Annotations = annotations
+		}
 		copy.Name = exposedName(manifest.Name, tool.Name)
 		tools = append(tools, toolBinding{definition: &copy, upstream: tool.Name, schema: resolveInputSchema(tool.InputSchema)})
 		delete(allowed, tool.Name)
@@ -162,6 +197,30 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 		return nil, fmt.Errorf("%s MCP offered no selected tools", manifest.Name)
 	}
 	return &Capability{name: manifest.Name, session: session, tools: tools, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+}
+
+func matchAnnotations(name string, rules []AnnotationRule) (*mcp.ToolAnnotations, error) {
+	var matched *mcp.ToolAnnotations
+	for _, rule := range rules {
+		for _, prefix := range rule.Prefixes {
+			if prefix == "" {
+				return nil, errors.New("annotation rule prefix must not be empty")
+			}
+			if !strings.HasPrefix(name, prefix) {
+				continue
+			}
+			if matched != nil {
+				return nil, errors.New("matches more than one annotation rule")
+			}
+			annotations := rule.Annotations
+			matched = &annotations
+			break
+		}
+	}
+	if matched == nil {
+		return nil, errors.New("matches no annotation rule")
+	}
+	return matched, nil
 }
 
 func oauthConfig(manifest OAuthClientCredentials) (*clientcredentials.Config, error) {
@@ -231,6 +290,10 @@ func exposedName(capability, upstream string) string {
 		return upstream
 	}
 	return capability + "_" + upstream
+}
+
+func rejectRedirect(_ *http.Request, _ []*http.Request) error {
+	return http.ErrUseLastResponse
 }
 
 type headerTransport struct {

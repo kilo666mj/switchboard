@@ -13,6 +13,7 @@ import (
 
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -25,17 +26,30 @@ type Capability struct {
 }
 
 func New(manifest Manifest) (*Capability, error) {
+	return NewWithEgress(manifest, nil)
+}
+
+func NewWithEgress(manifest Manifest, policy *egress.Policy) (*Capability, error) {
 	if err := manifest.Validate(); err != nil {
 		return nil, err
+	}
+	if policy != nil {
+		if err := policy.ValidateURL(manifest.BaseURL); err != nil {
+			return nil, fmt.Errorf("%s base URL violates egress policy: %w", manifest.Name, err)
+		}
 	}
 	headers, err := manifest.ResolveHeaders()
 	if err != nil {
 		return nil, err
 	}
-	return &Capability{manifest: manifest, headers: headers, client: &http.Client{
+	client := &http.Client{
 		Timeout:       30 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
-	}}, nil
+	}
+	if policy != nil {
+		client.Transport = policy.Transport()
+	}
+	return &Capability{manifest: manifest, headers: headers, client: client}, nil
 }
 
 func (c *Capability) Name() string { return c.manifest.Name }

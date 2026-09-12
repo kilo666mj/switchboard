@@ -3,15 +3,13 @@ package gateway
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"time"
 
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func registerExecutor(server *mcp.Server, profile string, items []capability.Capability) {
+func registerExecutor(server *mcp.Server, items []capability.Capability) {
 	executors := map[string]capability.ReadOnlyExecutor{}
 	for _, item := range items {
 		if executor, ok := item.(capability.ReadOnlyExecutor); ok {
@@ -27,17 +25,6 @@ func registerExecutor(server *mcp.Server, profile string, items []capability.Cap
 		Tool       string         `json:"tool" jsonschema:"Exact exposed tool name from capability_describe, including the capability prefix."`
 		Arguments  map[string]any `json:"arguments"`
 	}) (result *mcp.CallToolResult, _ any, err error) {
-		started := time.Now()
-		defer func() {
-			outcome := "success"
-			if err != nil {
-				outcome = "rejected_or_failed"
-			} else if result != nil && result.IsError {
-				outcome = "upstream_error"
-			}
-			// Never log arguments, result bodies, or error strings, which may contain secrets.
-			slog.InfoContext(ctx, "capability_execute", "profile", profile, "capability", input.Capability, "tool", input.Tool, "outcome", outcome, "duration_ms", time.Since(started).Milliseconds())
-		}()
 		executor, ok := executors[input.Capability]
 		if !ok {
 			return nil, nil, errors.New("remote capability is not available in the active profile")

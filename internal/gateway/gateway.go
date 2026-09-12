@@ -5,10 +5,16 @@ import (
 
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/config"
+	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func New(version, profile string, capabilities []capability.Capability) (*mcp.Server, error) {
+	return NewWithMetrics(version, profile, capabilities, nil)
+}
+
+func NewWithMetrics(version, profile string, capabilities []capability.Capability, metrics *observability.Metrics) (*mcp.Server, error) {
 	server, err := mcpkit.NewServer(mcpkit.ServerConfig{
 		Name:         "switchboard",
 		Version:      version,
@@ -27,7 +33,16 @@ func New(version, profile string, capabilities []capability.Capability) (*mcp.Se
 			return nil, fmt.Errorf("register capability %s: %w", item.Name(), err)
 		}
 	}
-	registerCatalog(server, capabilities)
-	registerExecutor(server, profile, capabilities)
+	registerCatalog(server, capabilities, config.ToolPolicy{})
+	registerExecutor(server, capabilities)
+	toolOwners := map[string]string{}
+	for _, item := range capabilities {
+		if describer, ok := item.(capability.Describer); ok {
+			for _, tool := range describer.Describe().Tools {
+				toolOwners[tool.Name] = item.Name()
+			}
+		}
+	}
+	registerAuditMiddleware(server, "legacy-shared", profile, "legacy", "", nil, "", toolOwners, "", config.ToolPolicy{}, nil, metrics)
 	return server, nil
 }

@@ -10,41 +10,62 @@ import (
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
+	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // NewSession creates an isolated tool registry. The caller owns authentication,
 // expiry, and session IDs; allowed capabilities have already been profile-filtered.
-func NewSession(version, id, identity string, policy config.Client, allowed []capability.Capability) (*mcp.Server, error) {
+func NewSession(version, id, identity string, policy config.Client, toolPolicy config.ToolPolicy, controller *CallController, metrics *observability.Metrics, allowed []capability.Capability) (*mcp.Server, error) {
+	if err := ValidateToolPolicy(toolPolicy, allowed); err != nil {
+		return nil, err
+	}
+	if toolPolicy.Version != "" && toolPolicy.Profile != policy.Profile {
+		return nil, fmt.Errorf("tool policy profile %q does not match client profile %q", toolPolicy.Profile, policy.Profile)
+	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "switchboard", Version: version}, &mcp.ServerOptions{
 		GetSessionID: func() string { return id },
-		Instructions: "Use capability_search and capability_describe to discover approved capabilities. Enable tools for this session with capability_enable. Preserve upstream plan, confirmation, and rollback workflows.",
+		Instructions: "Prefer native tools from connected capabilities for external services before falling back to command-line clients. Use capability_search and capability_describe when you need to inspect the approved catalog. Preserve upstream plan, confirmation, and rollback workflows.",
 	})
 	var mu sync.RWMutex
 	active := map[string]bool{}
 	catalog := map[string]capability.Capability{}
+	seenCapabilities := map[string]bool{}
 	toolOwners := map[string]string{}
 	toolNames := map[string][]string{}
 	for _, item := range allowed {
-		if catalog[item.Name()] != nil {
+		if seenCapabilities[item.Name()] {
 			return nil, fmt.Errorf("duplicate capability %q", item.Name())
 		}
+		seenCapabilities[item.Name()] = true
 		describer, ok := item.(capability.Describer)
 		if !ok {
 			return nil, fmt.Errorf("capability %s lacks session tool metadata", item.Name())
 		}
-		catalog[item.Name()] = item
+		visibleCount := 0
 		for _, tool := range describer.Describe().Tools {
 			if toolOwners[tool.Name] != "" || tool.Name == "capability_search" || tool.Name == "capability_describe" || tool.Name == "capability_execute" || tool.Name == "capability_enable" || tool.Name == "capability_disable" {
 				return nil, fmt.Errorf("duplicate or reserved tool %q", tool.Name)
 			}
 			toolOwners[tool.Name] = item.Name()
-			toolNames[item.Name()] = append(toolNames[item.Name()], tool.Name)
+			if toolVisible(toolPolicy, item.Name(), tool.Name) {
+				toolNames[item.Name()] = append(toolNames[item.Name()], tool.Name)
+				visibleCount++
+			}
+		}
+		if visibleCount > 0 {
+			catalog[item.Name()] = item
+		}
+	}
+	exposed := make([]capability.Capability, 0, len(catalog))
+	for _, item := range allowed {
+		if catalog[item.Name()] != nil {
+			exposed = append(exposed, item)
 		}
 	}
 	initial := policy.InitialCapabilities
 	if initial == nil {
-		for _, item := range allowed {
+		for _, item := range exposed {
 			initial = append(initial, item.Name())
 		}
 	}
@@ -54,17 +75,17 @@ func NewSession(version, id, identity string, policy config.Client, allowed []ca
 			if item == nil {
 				return nil, fmt.Errorf("initial capability %q is not allowed", name)
 			}
-			if err := item.Register(server); err != nil {
+			if err := registerVisibleTools(server, item, toolPolicy); err != nil {
 				return nil, err
 			}
 			active[name] = true
 		}
 	}
 	if policy.Discover {
-		registerCatalog(server, allowed)
+		registerCatalog(server, exposed, toolPolicy)
 	}
 	if policy.Execute {
-		registerExecutor(server, policy.Profile, allowed)
+		registerExecutor(server, exposed)
 	}
 	if policy.Activate && policy.Execute {
 		for _, enable := range []bool{true, false} {
@@ -84,7 +105,7 @@ func NewSession(version, id, identity string, policy config.Client, allowed []ca
 					}
 					if active[input.Name] != enable {
 						if enable {
-							if err := item.Register(server); err != nil {
+							if err := registerVisibleTools(server, item, toolPolicy); err != nil {
 								return nil, nil, err
 							}
 						} else {
@@ -127,5 +148,63 @@ func NewSession(version, id, identity string, policy config.Client, allowed []ca
 			return next(ctx, method, req)
 		}
 	})
+	registerAuditMiddleware(server, identity, policy.Profile, policy.IdentityPolicy, policy.IdentityPolicyVersion, policy.IdentityPolicyComponents, id, toolOwners, policy.ToolPolicy, toolPolicy, controller, metrics)
 	return server, nil
+}
+
+func registerVisibleTools(server *mcp.Server, item capability.Capability, policy config.ToolPolicy) error {
+	if err := item.Register(server); err != nil {
+		return err
+	}
+	if policy.Version == "" {
+		return nil
+	}
+	describer := item.(capability.Describer)
+	for _, tool := range describer.Describe().Tools {
+		if !toolVisible(policy, item.Name(), tool.Name) {
+			server.RemoveTools(tool.Name)
+		}
+	}
+	return nil
+}
+
+// ValidateToolPolicy catches stale or misspelled explicit entries before use.
+// Tools omitted from a configured policy remain valid configuration and deny at runtime.
+func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capability) error {
+	if policy.Version == "" {
+		return nil
+	}
+	available := map[string]bool{}
+	capabilities := map[string]bool{}
+	for _, item := range allowed {
+		capabilities[item.Name()] = true
+		describer, ok := item.(capability.Describer)
+		if !ok {
+			return fmt.Errorf("capability %s lacks session tool metadata", item.Name())
+		}
+		for _, tool := range describer.Describe().Tools {
+			available[tool.Name] = true
+		}
+	}
+	for name, decision := range policy.Capabilities {
+		if !capabilities[name] {
+			return fmt.Errorf("tool policy references unavailable capability %q", name)
+		}
+		switch decision {
+		case "allow", "deny", "require_approval":
+		default:
+			return fmt.Errorf("tool policy has invalid decision %q for capability %q", decision, name)
+		}
+	}
+	for name := range policy.Tools {
+		if !available[name] {
+			return fmt.Errorf("tool policy references unavailable tool %q", name)
+		}
+		switch policy.Tools[name] {
+		case "allow", "deny", "require_approval":
+		default:
+			return fmt.Errorf("tool policy has invalid decision %q for tool %q", policy.Tools[name], name)
+		}
+	}
+	return nil
 }

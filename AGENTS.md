@@ -8,6 +8,11 @@ Capability manifests must not contain credentials. Reference environment
 variables instead. Preserve upstream safety workflows rather than replacing
 them with generic unrestricted HTTP calls.
 
+For Forgejo repository, issue, pull request, release, and Actions operations,
+prefer the connected `forgejo` Switchboard capability and its native
+`forgejo_*` tools. Use `tea` only when the Forgejo capability is unavailable or
+lacks the required operation.
+
 After Go changes, run:
 
 ```sh

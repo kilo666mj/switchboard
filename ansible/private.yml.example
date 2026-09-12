@@ -26,18 +26,99 @@ tintwire_oauth_client_secret: "{{ lookup('ansible.builtin.ini', 'SWITCHBOARD_OID
 tintwire_oauth_resource: https://tintwire.example.internal/mcp
 wayminder_mcp_url: https://wayminder.example.internal/mcp
 wayminder_mcp_token: replace-me
+taskboard_mcp_url: https://taskboard.example.internal/mcp
+taskboard_mcp_token: replace-me
 
 # Optional per-installation clients at /mcp/sessions. Use a different random token
 # for every installation. Retain the legacy bearer during a staged migration.
 switchboard_clients: {}
 switchboard_client_tokens: {}
+switchboard_tool_policies: {}
+switchboard_egress_policy: null
+switchboard_inbound_oauth: null
+switchboard_cloudflare_access: null
 # switchboard_clients:
 #   workstation:
 #     token_env: SWITCHBOARD_CLIENT_WORKSTATION
 #     profile: all
-#     initial_capabilities: [wayminder]
+#     tool_policy: workplace-read
+#     limits:
+#       requests_per_minute: 120
+#       burst: 10
+#       concurrency: 4
 #     discover: true
 #     execute: true
-#     activate: true
+#     activate: false
+# switchboard_tool_policies:
+#   workplace-read:
+#     version: pilot-v1
+#     profile: all
+#     capabilities:
+#       fleetglass: allow
+#     tools:
+#       wayminder_status: allow
+#     tool_limits:
+#       wayminder_status:
+#         requests_per_minute: 60
+#         burst: 5
+#         concurrency: 2
 # switchboard_client_tokens:
 #   SWITCHBOARD_CLIENT_WORKSTATION: generate-a-unique-random-token
+
+# Opt-in production egress boundary. List every capability and OAuth token
+# destination using exact host:port syntax and only the networks they may resolve
+# into. HTTPS is mandatory when this policy is present.
+# switchboard_egress_policy:
+#   allowed_destinations:
+#     - inventory.example.internal:443
+#     - id.example.internal:443
+#   allowed_cidrs:
+#     - 192.0.2.0/24
+
+# OAuth resource-server authentication for /mcp/sessions. Configure a matching
+# API resource and permissions in the authorization server. Static clients are
+# disabled by default when this block is present.
+# switchboard_inbound_oauth:
+#   issuer: https://id.example.com
+#   resource: https://switchboard.example.internal/mcp/sessions
+#   required_scopes:
+#     - openid # required when group_source is userinfo
+#     - mcp:connect
+#   group_claim: groups
+#   group_source: access_token # use userinfo for Pocket ID group claims
+#   scope_claim: scope
+#   jwt_type: at+jwt
+#   allow_static_clients: true
+#   policy_mode: exclusive # use composed for additive group entitlements
+#   policies:
+#     workplace-readers:
+#       version: pilot-v1
+#       groups:
+#         - switchboard-readers
+#       required_scopes:
+#         - tools:read
+#       profile: all
+#       tool_policy: workplace-read
+#       discover: true
+#       execute: true
+#       activate: false
+
+# Optional Cloudflare Access identity source for an Access-protected ingress.
+# The origin must be reachable only through the matching Access application.
+# OAuth and Cloudflare Access policies may reference the same profile and tool
+# policy. Both assertions on one request are rejected as ambiguous.
+# switchboard_cloudflare_access:
+#   team_domain: https://example.cloudflareaccess.com
+#   audience: replace-with-the-access-application-aud-tag
+#   allow_static_clients: true
+#   policy_mode: exclusive # use composed for additive group entitlements
+#   policies:
+#     workplace-users:
+#       version: pilot-v1
+#       groups:
+#         - switchboard-users
+#       profile: all
+#       tool_policy: workplace-read
+#       discover: true
+#       execute: true
+#       activate: false

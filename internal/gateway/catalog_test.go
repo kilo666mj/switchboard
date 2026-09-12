@@ -25,7 +25,7 @@ func TestCatalogProfileRedactionAndSchemas(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	items, err := loader.Load(t.Context(), dir, []string{"dns"})
+	items, err := loader.Load(t.Context(), dir, []string{"dns"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

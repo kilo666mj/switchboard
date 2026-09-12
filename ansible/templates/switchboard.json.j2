@@ -8,5 +8,9 @@
   "session_limit": {{ switchboard_session_limit | default(256) | int }},
   "session_idle_seconds": {{ switchboard_session_idle_seconds | default(1800) | int }},
   "clients": {{ switchboard_clients | default({}) | to_json }},
+  "tool_policies": {{ switchboard_tool_policies | default({}) | to_json }},
+  "egress_policy": {{ switchboard_egress_policy | default(none) | to_json }},
+  "oauth": {{ switchboard_inbound_oauth | default(none) | to_json }},
+  "cloudflare_access": {{ switchboard_cloudflare_access | default(none) | to_json }},
   "profiles": {{ switchboard_profiles | default({'all': switchboard_capabilities}) | to_json }}
 }

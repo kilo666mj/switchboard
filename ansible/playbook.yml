@@ -14,6 +14,7 @@
       - parallaxd
       - rendercase
       - rilldns
+      - taskboard
       - tintwire
       - wayminder
 
@@ -39,6 +40,8 @@
           - rendercase_oauth_resource | length > 0
           - rilldns_mcp_url | length > 0
           - rilldns_mcp_token | length >= 32
+          - taskboard_mcp_url | length > 0
+          - taskboard_mcp_token | length >= 32
           - tintwire_mcp_url | length > 0
           - tintwire_oauth_client_id | length > 0
           - tintwire_oauth_client_secret | length >= 32
@@ -53,6 +56,7 @@
           - "'placeholder' not in (rendercase_oauth_client_id | lower)"
           - "'placeholder' not in (rendercase_oauth_client_secret | lower)"
           - "'placeholder' not in (rilldns_mcp_token | lower)"
+          - "'placeholder' not in (taskboard_mcp_token | lower)"
           - "'placeholder' not in (tintwire_oauth_client_id | lower)"
           - "'placeholder' not in (tintwire_oauth_client_secret | lower)"
           - "'placeholder' not in (wayminder_mcp_token | lower)"
@@ -276,6 +280,20 @@
           {% for name, value in (switchboard_client_tokens | default({})).items() %}
           {{ name }}={{ value | to_json }}
           {% endfor %}
+        owner: root
+        group: switchboard
+        mode: "0640"
+      when: switchboard_reuse_upstream_credentials | default(false) | bool
+      no_log: true
+      notify: Restart Switchboard
+
+    - name: Add Taskboard credentials during an in-place upgrade
+      ansible.builtin.blockinfile:
+        path: /etc/switchboard/switchboard.env
+        marker: "# {mark} TASKBOARD CREDENTIALS"
+        block: |
+          TASKBOARD_MCP_URL={{ taskboard_mcp_url | to_json }}
+          TASKBOARD_MCP_TOKEN={{ taskboard_mcp_token | to_json }}
         owner: root
         group: switchboard
         mode: "0640"

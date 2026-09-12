@@ -12,9 +12,10 @@ import (
 	"github.com/kilo666mj/switchboard/internal/capability"
 	capremote "github.com/kilo666mj/switchboard/internal/capability/remote"
 	caprest "github.com/kilo666mj/switchboard/internal/capability/rest"
+	"github.com/kilo666mj/switchboard/internal/egress"
 )
 
-func Load(ctx context.Context, dir string, selected []string) ([]capability.Capability, error) {
+func Load(ctx context.Context, dir string, selected []string, policy *egress.Policy) ([]capability.Capability, error) {
 	wanted := make(map[string]bool, len(selected))
 	for _, name := range selected {
 		wanted[name] = true
@@ -54,7 +55,7 @@ func Load(ctx context.Context, dir string, selected []string) ([]capability.Capa
 			if err := decoder.Decode(&manifest); err != nil {
 				return nil, fmt.Errorf("decode %s: %w", entry.Name(), err)
 			}
-			item, err = capremote.New(ctx, manifest)
+			item, err = capremote.NewWithEgress(ctx, manifest, policy)
 		} else {
 			var manifest caprest.Manifest
 			decoder := json.NewDecoder(strings.NewReader(string(data)))
@@ -62,7 +63,7 @@ func Load(ctx context.Context, dir string, selected []string) ([]capability.Capa
 			if err := decoder.Decode(&manifest); err != nil {
 				return nil, fmt.Errorf("decode %s: %w", entry.Name(), err)
 			}
-			item, err = caprest.New(manifest)
+			item, err = caprest.NewWithEgress(manifest, policy)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("load %s: %w", entry.Name(), err)

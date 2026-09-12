@@ -95,7 +95,7 @@ func TestCompatibilityExecution(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(logs.String(), `"profile":"restricted"`) || !strings.Contains(logs.String(), `"tool":"test_read"`) || !strings.Contains(logs.String(), `"outcome":"upstream_error"`) {
+	if !strings.Contains(logs.String(), `"profile":"restricted"`) || !strings.Contains(logs.String(), `"tool":"test_read"`) || !strings.Contains(logs.String(), `"outcome":"tool_error"`) {
 		t.Fatalf("missing audit fields: %s", logs.String())
 	}
 	if strings.Contains(logs.String(), "secret-canary") || strings.Contains(logs.String(), "upstream policy denied") {

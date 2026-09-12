@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "type": "mcp",
+  "name": "taskboard",
+  "title": "Taskboard",
+  "tags": ["agents", "tasks", "checklists", "status"],
+  "risk": "mutating",
+  "description": "Track agent work as durable tasks, checklists, runs, and status events.",
+  "endpoint_env": "TASKBOARD_MCP_URL",
+  "headers": {
+    "Authorization": {"env": "TASKBOARD_MCP_TOKEN", "prefix": "Bearer "}
+  }
+}

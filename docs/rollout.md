@@ -27,6 +27,8 @@ On `/mcp/sessions`, verify with two distinct client credentials:
 
 - Initialization returns a session ID and advertises tool-list changes.
 - Discovery returns only the identity's approved profile.
+- A configured tool policy removes denied capabilities and tools from native
+  discovery and the compatibility catalog while stale calls still fail closed.
 - Enable/disable changes the native tool list and emits notifications.
 - Native and compatibility read-only calls return upstream results.
 - Compatibility mutation and calls to disabled/excluded tools are rejected.
