@@ -249,3 +249,19 @@ func TestSessionAuditsAndBlocksIdentityRateLimit(t *testing.T) {
 		t.Fatalf("calls=%d logs=%s", calls.Load(), logs.String())
 	}
 }
+
+func TestValidateToolPolicyAllowsOnlyConfiguredUnavailableCapabilityEntries(t *testing.T) {
+	policy := config.ToolPolicy{
+		Version:      "v1",
+		Profile:      "all",
+		Capabilities: map[string]string{"broken": "allow"},
+		Tools:        map[string]string{"broken_status": "allow"},
+	}
+	if err := gateway.ValidateToolPolicyAvailable(policy, nil, map[string]bool{"broken": true}); err != nil {
+		t.Fatal(err)
+	}
+	policy.Tools["misspelled_status"] = "allow"
+	if err := gateway.ValidateToolPolicyAvailable(policy, nil, map[string]bool{"broken": true}); err == nil {
+		t.Fatal("unrelated unavailable tool was accepted")
+	}
+}

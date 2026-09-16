@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/kilo666mj/mcpkit"
@@ -171,6 +172,13 @@ func registerVisibleTools(server *mcp.Server, item capability.Capability, policy
 // ValidateToolPolicy catches stale or misspelled explicit entries before use.
 // Tools omitted from a configured policy remain valid configuration and deny at runtime.
 func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capability) error {
+	return ValidateToolPolicyAvailable(policy, allowed, nil)
+}
+
+// ValidateToolPolicyAvailable validates everything that can be checked while
+// allowing entries owned by a configured but temporarily unavailable
+// capability. Those entries are validated when the capability recovers.
+func ValidateToolPolicyAvailable(policy config.ToolPolicy, allowed []capability.Capability, unavailable map[string]bool) error {
 	if policy.Version == "" {
 		return nil
 	}
@@ -187,7 +195,7 @@ func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capabilit
 		}
 	}
 	for name, decision := range policy.Capabilities {
-		if !capabilities[name] {
+		if !capabilities[name] && !unavailable[name] {
 			return fmt.Errorf("tool policy references unavailable capability %q", name)
 		}
 		switch decision {
@@ -197,7 +205,7 @@ func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capabilit
 		}
 	}
 	for name := range policy.Tools {
-		if !available[name] {
+		if !available[name] && !toolBelongsToUnavailable(name, capabilities, unavailable) {
 			return fmt.Errorf("tool policy references unavailable tool %q", name)
 		}
 		switch policy.Tools[name] {
@@ -207,4 +215,19 @@ func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capabilit
 		}
 	}
 	return nil
+}
+
+func toolBelongsToUnavailable(tool string, available, unavailable map[string]bool) bool {
+	owner := ""
+	for name := range available {
+		if strings.HasPrefix(tool, name+"_") && len(name) > len(owner) {
+			owner = name
+		}
+	}
+	for name := range unavailable {
+		if strings.HasPrefix(tool, name+"_") && len(name) > len(owner) {
+			owner = name
+		}
+	}
+	return unavailable[owner]
 }

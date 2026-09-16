@@ -1,0 +1,82 @@
+---
+- name: Install Switchboard Prometheus monitoring
+  hosts: switchboard_monitoring
+  become: true
+  vars_files:
+    - private.yml
+  vars:
+    prometheus_config_dir: /etc/prometheus
+    prometheus_container: "{{ switchboard_prometheus_container | default('prometheus') }}"
+  tasks:
+    - name: Validate Switchboard monitoring inputs
+      ansible.builtin.assert:
+        that:
+          - switchboard_metrics_target is defined
+          - switchboard_metrics_target | length > 0
+          - switchboard_metrics_scheme | default('https') in ['http', 'https']
+
+    - name: Install Switchboard alert rules
+      ansible.builtin.copy:
+        src: ../monitoring/switchboard.rules.yml
+        dest: "{{ prometheus_config_dir }}/switchboard.rules.yml"
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      notify: Reload Prometheus
+
+    - name: Install Switchboard scrape configuration
+      ansible.builtin.template:
+        src: switchboard-prometheus-scrape.yml.j2
+        dest: "{{ prometheus_config_dir }}/conf.d/switchboard.yaml"
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      notify: Reload Prometheus
+
+    - name: Load Switchboard alert rules from Prometheus
+      ansible.builtin.lineinfile:
+        path: "{{ prometheus_config_dir }}/prometheus.yml"
+        regexp: '^\s*-\s*["'']?switchboard\.rules\.yml["'']?\s*$'
+        line: '  - "switchboard.rules.yml"'
+        insertafter: '^rule_files:'
+        backup: true
+      notify: Reload Prometheus
+
+    - name: Validate Switchboard alert rules
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - "{{ prometheus_container }}"
+          - promtool
+          - check
+          - rules
+          - "{{ prometheus_config_dir }}/switchboard.rules.yml"
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: Validate the complete Prometheus configuration
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - "{{ prometheus_container }}"
+          - promtool
+          - check
+          - config
+          - "{{ prometheus_config_dir }}/prometheus.yml"
+      changed_when: false
+      when: not ansible_check_mode
+
+  handlers:
+    - name: Reload Prometheus
+      ansible.builtin.command:
+        argv:
+          - docker
+          - kill
+          - --signal
+          - HUP
+          - "{{ prometheus_container }}"
+      changed_when: true

@@ -91,12 +91,7 @@ func (a *CloudflareAccessAuthenticator) Authenticate(r *http.Request) (Principal
 			groups[group] = true
 		}
 	}
-	matches := []PolicyMatch{}
-	for name, policy := range a.cfg.Policies {
-		if matchesPolicy(verified.Subject, groups, policy) {
-			matches = append(matches, PolicyMatch{Name: name, Policy: policy})
-		}
-	}
+	matches := EvaluatePolicies(verified.Subject, groups, nil, a.cfg.Policies, false).Matches
 	if len(matches) == 0 {
 		return Principal{}, ErrPolicyDenied
 	}

@@ -44,10 +44,10 @@ type entry struct {
 }
 
 type requestClient struct {
-	name, binding string
-	policy        config.Client
-	toolPolicy    config.ToolPolicy
-	controller    *gateway.CallController
+	name, binding, oauthSubject string
+	policy                      config.Client
+	toolPolicy                  config.ToolPolicy
+	controller                  *gateway.CallController
 }
 
 type identityController struct {
@@ -61,13 +61,15 @@ type IdentityAuthenticator interface {
 }
 
 type Handler struct {
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	credentials   []credential
 	entries       map[string]*entry
 	limit         int
 	idle          time.Duration
 	version       string
+	cfg           config.Config
 	capabilities  map[string]capability.Capability
+	unavailable   map[string]bool
 	profiles      map[string][]string
 	toolPolicies  map[string]config.ToolPolicy
 	metrics       *observability.Metrics
@@ -89,13 +91,23 @@ func NewWithMetrics(ctx context.Context, version string, cfg config.Config, item
 }
 
 func NewWithAuth(ctx context.Context, version string, cfg config.Config, items []capability.Capability, metrics *observability.Metrics, authenticator IdentityAuthenticator) (*Handler, error) {
+	return NewWithAuthUnavailable(ctx, version, cfg, items, nil, metrics, authenticator)
+}
+
+// NewWithAuthUnavailable starts authenticated sessions with the available
+// subset of a valid configuration. Temporarily unavailable capabilities can be
+// added later with AddCapability; new sessions will then include them.
+func NewWithAuthUnavailable(ctx context.Context, version string, cfg config.Config, items []capability.Capability, unavailable []string, metrics *observability.Metrics, authenticator IdentityAuthenticator) (*Handler, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	if (cfg.OAuth == nil && cfg.CloudflareAccess == nil) != (authenticator == nil) {
 		return nil, errors.New("identity-provider configuration and authenticator must be supplied together")
 	}
-	h := &Handler{entries: map[string]*entry{}, limit: cfg.SessionLimit, idle: time.Duration(cfg.SessionIdleSeconds) * time.Second, version: version, capabilities: map[string]capability.Capability{}, profiles: cfg.Profiles, toolPolicies: cfg.ToolPolicies, metrics: metrics, authenticator: authenticator, controllers: map[string]identityController{}}
+	h := &Handler{entries: map[string]*entry{}, limit: cfg.SessionLimit, idle: time.Duration(cfg.SessionIdleSeconds) * time.Second, version: version, cfg: cfg, capabilities: map[string]capability.Capability{}, unavailable: map[string]bool{}, profiles: cfg.Profiles, toolPolicies: cfg.ToolPolicies, metrics: metrics, authenticator: authenticator, controllers: map[string]identityController{}}
+	for _, name := range unavailable {
+		h.unavailable[name] = true
+	}
 	if h.limit == 0 {
 		h.limit = 256
 	}
@@ -129,45 +141,8 @@ func NewWithAuth(ctx context.Context, version string, cfg config.Config, items [
 	for _, item := range items {
 		h.capabilities[item.Name()] = item
 	}
-	for _, client := range h.credentials {
-		var allowed []capability.Capability
-		for _, name := range cfg.Profiles[client.policy.Profile] {
-			if h.capabilities[name] == nil {
-				return nil, fmt.Errorf("missing capability %q", name)
-			}
-			allowed = append(allowed, h.capabilities[name])
-		}
-		if err := gateway.ValidateToolPolicy(h.toolPolicies[client.policy.ToolPolicy], allowed); err != nil {
-			return nil, fmt.Errorf("client %q tool policy: %w", client.name, err)
-		}
-	}
-	if cfg.OAuth != nil {
-		for name, oauthPolicy := range cfg.OAuth.Policies {
-			var allowed []capability.Capability
-			for _, capabilityName := range cfg.Profiles[oauthPolicy.Profile] {
-				if h.capabilities[capabilityName] == nil {
-					return nil, fmt.Errorf("missing capability %q", capabilityName)
-				}
-				allowed = append(allowed, h.capabilities[capabilityName])
-			}
-			if err := gateway.ValidateToolPolicy(h.toolPolicies[oauthPolicy.ToolPolicy], allowed); err != nil {
-				return nil, fmt.Errorf("OAuth policy %q tool policy: %w", name, err)
-			}
-		}
-	}
-	if cfg.CloudflareAccess != nil {
-		for name, identityPolicy := range cfg.CloudflareAccess.Policies {
-			var allowed []capability.Capability
-			for _, capabilityName := range cfg.Profiles[identityPolicy.Profile] {
-				if h.capabilities[capabilityName] == nil {
-					return nil, fmt.Errorf("missing capability %q", capabilityName)
-				}
-				allowed = append(allowed, h.capabilities[capabilityName])
-			}
-			if err := gateway.ValidateToolPolicy(h.toolPolicies[identityPolicy.ToolPolicy], allowed); err != nil {
-				return nil, fmt.Errorf("Cloudflare Access policy %q tool policy: %w", name, err)
-			}
-		}
+	if err := h.validateConfiguredPolicies(); err != nil {
+		return nil, err
 	}
 	h.transport = mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 		server, _ := r.Context().Value(serverKey{}).(*mcp.Server)
@@ -194,6 +169,60 @@ func NewWithAuth(ctx context.Context, version string, cfg config.Config, items [
 		}
 	}()
 	return h, nil
+}
+
+// AddCapability makes a recovered capability available to newly created
+// sessions. Existing sessions keep their immutable tool registry.
+func (h *Handler) AddCapability(item capability.Capability) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.closed {
+		return errors.New("session handler is closed")
+	}
+	name := item.Name()
+	if h.capabilities[name] != nil {
+		return fmt.Errorf("duplicate capability %q", name)
+	}
+	h.capabilities[name] = item
+	delete(h.unavailable, name)
+	if err := h.validateConfiguredPolicies(); err != nil {
+		delete(h.capabilities, name)
+		h.unavailable[name] = true
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) validateConfiguredPolicies() error {
+	allowed := func(profile string) []capability.Capability {
+		items := make([]capability.Capability, 0, len(h.profiles[profile]))
+		for _, name := range h.profiles[profile] {
+			if item := h.capabilities[name]; item != nil {
+				items = append(items, item)
+			}
+		}
+		return items
+	}
+	for _, client := range h.credentials {
+		if err := gateway.ValidateToolPolicyAvailable(h.toolPolicies[client.policy.ToolPolicy], allowed(client.policy.Profile), h.unavailable); err != nil {
+			return fmt.Errorf("client %q tool policy: %w", client.name, err)
+		}
+	}
+	if h.cfg.OAuth != nil {
+		for name, policy := range h.cfg.OAuth.Policies {
+			if err := gateway.ValidateToolPolicyAvailable(h.toolPolicies[policy.ToolPolicy], allowed(policy.Profile), h.unavailable); err != nil {
+				return fmt.Errorf("OAuth policy %q tool policy: %w", name, err)
+			}
+		}
+	}
+	if h.cfg.CloudflareAccess != nil {
+		for name, policy := range h.cfg.CloudflareAccess.Policies {
+			if err := gateway.ValidateToolPolicyAvailable(h.toolPolicies[policy.ToolPolicy], allowed(policy.Profile), h.unavailable); err != nil {
+				return fmt.Errorf("Cloudflare Access policy %q tool policy: %w", name, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.protected.ServeHTTP(w, r) }
@@ -241,10 +270,16 @@ func (h *Handler) authenticate(r *http.Request) (*requestClient, error) {
 	if policy.IdentityPolicyVersion != "" {
 		binding += "\x00" + policy.IdentityPolicyVersion
 	}
-	return &requestClient{name: principal.Identity, binding: binding, policy: policy, toolPolicy: toolPolicy}, nil
+	oauthSubject := ""
+	if source == "oauth" {
+		oauthSubject = principal.Identity
+	}
+	return &requestClient{name: principal.Identity, binding: binding, oauthSubject: oauthSubject, policy: policy, toolPolicy: toolPolicy}, nil
 }
 
 func (h *Handler) resolvePrincipal(principal auth.Principal) (config.Client, config.ToolPolicy, string, error) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	if !principal.Composed {
 		return principal.Policy, h.toolPolicies[principal.Policy.ToolPolicy], principal.PolicyName, nil
 	}
@@ -252,6 +287,9 @@ func (h *Handler) resolvePrincipal(principal auth.Principal) (config.Client, con
 	for _, match := range principal.PolicyMatches {
 		for _, capabilityName := range h.profiles[match.Policy.Profile] {
 			item := h.capabilities[capabilityName]
+			if item == nil {
+				continue
+			}
 			describer, ok := item.(capability.Describer)
 			if !ok {
 				return config.Client{}, config.ToolPolicy{}, "", fmt.Errorf("capability %s lacks session tool metadata", capabilityName)
@@ -437,6 +475,9 @@ func (h *Handler) identityControllerFor(key string, policy config.Client, toolPo
 func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	client, authErr := h.authenticate(r)
 	if authErr != nil {
+		if errors.Is(authErr, auth.ErrUserInfo) {
+			h.metrics.UserInfoFailure()
+		}
 		if errors.Is(authErr, auth.ErrInsufficientScope) || errors.Is(authErr, auth.ErrPolicyDenied) || errors.Is(authErr, auth.ErrAmbiguousPolicy) {
 			h.metrics.AuthorizationFailure()
 		} else {
@@ -450,6 +491,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.metrics.ObserveIdentityPolicy(client.policy.IdentityPolicyComponents, client.policy.IdentityPolicyVersion)
 	if len(r.Header.Values(sessionHeader)) > 1 {
 		http.Error(w, "invalid session header", 400)
 		return
@@ -521,13 +563,31 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	id = rand.Text()
 	var allowed []capability.Capability
 	for _, name := range h.profiles[client.policy.Profile] {
-		allowed = append(allowed, h.capabilities[name])
+		item := h.capabilities[name]
+		if item == nil {
+			continue
+		}
+		if client.oauthSubject != "" {
+			if binder, ok := item.(capability.OAuthSubjectBinder); ok {
+				var bindErr error
+				item, bindErr = binder.BindOAuthSubject(client.oauthSubject)
+				if bindErr != nil {
+					h.mu.Unlock()
+					http.Error(w, "session configuration error", 500)
+					return
+				}
+			}
+		}
+		allowed = append(allowed, item)
 	}
+	controllerPolicy := client.toolPolicy
+	client.policy = policyForAvailableCapabilities(client.policy, allowed)
+	client.toolPolicy = toolPolicyForAvailableCapabilities(client.toolPolicy, allowed)
 	controller := client.controller
 	controllerKey := ""
 	if !strings.HasPrefix(client.binding, "static:") {
 		controllerKey = client.name + "\x00" + client.binding
-		controller = h.identityControllerFor(controllerKey, client.policy, client.toolPolicy, now)
+		controller = h.identityControllerFor(controllerKey, client.policy, controllerPolicy, now)
 	}
 	server, err := gateway.NewSession(h.version, id, client.name, client.policy, client.toolPolicy, controller, h.metrics, allowed)
 	if err != nil {
@@ -553,6 +613,57 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	if !initialized || closed {
 		h.remove(id, record)
 	}
+}
+
+func policyForAvailableCapabilities(policy config.Client, allowed []capability.Capability) config.Client {
+	if policy.InitialCapabilities == nil {
+		return policy
+	}
+	available := make(map[string]bool, len(allowed))
+	for _, item := range allowed {
+		available[item.Name()] = true
+	}
+	copy := policy
+	copy.InitialCapabilities = make([]string, 0, len(policy.InitialCapabilities))
+	for _, name := range policy.InitialCapabilities {
+		if available[name] {
+			copy.InitialCapabilities = append(copy.InitialCapabilities, name)
+		}
+	}
+	return copy
+}
+
+func toolPolicyForAvailableCapabilities(policy config.ToolPolicy, allowed []capability.Capability) config.ToolPolicy {
+	availableCapabilities := make(map[string]bool, len(allowed))
+	availableTools := map[string]bool{}
+	for _, item := range allowed {
+		availableCapabilities[item.Name()] = true
+		if describer, ok := item.(capability.Describer); ok {
+			for _, tool := range describer.Describe().Tools {
+				availableTools[tool.Name] = true
+			}
+		}
+	}
+	copy := policy
+	copy.Capabilities = map[string]string{}
+	copy.Tools = map[string]string{}
+	copy.ToolLimits = map[string]config.CallLimits{}
+	for name, decision := range policy.Capabilities {
+		if availableCapabilities[name] {
+			copy.Capabilities[name] = decision
+		}
+	}
+	for name, decision := range policy.Tools {
+		if availableTools[name] {
+			copy.Tools[name] = decision
+		}
+	}
+	for name, limits := range policy.ToolLimits {
+		if availableTools[name] {
+			copy.ToolLimits[name] = limits
+		}
+	}
+	return copy
 }
 
 func closeEntry(record *entry) {

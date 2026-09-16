@@ -1,7 +1,9 @@
 # Copy to private.yml (ignored), use deployment-specific URLs, and source all
 # credential values from your secret manager. Never commit the populated file.
 switchboard_public_origin: https://switchboard.example.internal
-switchboard_bearer_token: "{{ lookup('ansible.builtin.password', playbook_dir + '/switchboard_token', length=64, chars=['hexdigits']) }}"
+# Leave empty once all clients use the identity-bound /mcp/sessions endpoint.
+# During migration, set a strong legacy /mcp bearer credential here.
+switchboard_bearer_token: ""
 
 switchboard_oauth_token_url: https://id.example.com/api/oidc/token
 
@@ -37,6 +39,9 @@ switchboard_tool_policies: {}
 switchboard_egress_policy: null
 switchboard_inbound_oauth: null
 switchboard_cloudflare_access: null
+# Set only when an in-place upgrade must add or rotate these two values in the
+# existing protected environment file. Leave false to preserve them unchanged.
+switchboard_update_taskboard_credentials: false
 # switchboard_clients:
 #   workstation:
 #     token_env: SWITCHBOARD_CLIENT_WORKSTATION
@@ -74,6 +79,13 @@ switchboard_cloudflare_access: null
 #     - id.example.internal:443
 #   allowed_cidrs:
 #     - 192.0.2.0/24
+
+# Prometheus integration used by monitoring.yml. The target must resolve from
+# the monitoring host. Keep TLS verification enabled with a valid internal CA.
+# switchboard_metrics_target: switchboard.example.internal
+# switchboard_metrics_scheme: https
+# switchboard_metrics_tls_insecure_skip_verify: false
+# switchboard_prometheus_container: prometheus
 
 # OAuth resource-server authentication for /mcp/sessions. Configure a matching
 # API resource and permissions in the authorization server. Static clients are

@@ -5,8 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { Agent, fetch as undiciFetch } from "undici";
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { FileOAuthProvider, loadSettings } from "./oauth.ts";
 
 export default function (pi: ExtensionAPI): void {
   let client: Client | undefined;
@@ -15,20 +14,6 @@ export default function (pi: ExtensionAPI): void {
   let visible = new Set<string>();
   let catalogGeneration = 0;
   let refreshQueue = Promise.resolve();
-
-  function settings(): { url: string; token: string } {
-    const config = JSON.parse(readFileSync(process.env.SWITCHBOARD_PI_CONFIG ?? join(homedir(), ".pi/agent/switchboard.json"), "utf8"));
-    const url = new URL(config.url);
-    if (url.protocol !== "https:" || url.username || url.password) throw new Error("Switchboard requires a credential-free HTTPS URL");
-    let token = process.env[config.token_env];
-    if (!token) {
-      const lines = readFileSync(join(homedir(), ".config/environment.d/92-switchboard.conf"), "utf8").split("\n");
-      const line = lines.find((value) => value.startsWith(config.token_env + "="));
-      if (line) token = JSON.parse(line.slice(config.token_env.length + 1));
-    }
-    if (!token) throw new Error("Switchboard credential is not available");
-    return { url: url.href, token };
-  }
 
   function caBundle(): string | undefined {
     const explicit = process.env.SWITCHBOARD_CA_CERTS;
@@ -102,11 +87,18 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => {
     try {
-      const config = settings();
+      const config = loadSettings();
+      const provider = new FileOAuthProvider(config, () => {
+        ctx.ui.notify("Switchboard OAuth login required; run: npm --prefix ~/.pi/agent/extensions/switchboard run login", "warning");
+      });
+      if (!(await provider.tokens())) {
+        ctx.ui.notify("Switchboard OAuth login required; run: npm --prefix ~/.pi/agent/extensions/switchboard run login", "warning");
+        return;
+      }
       agent = new Agent({ connect: { ca: caBundle() } });
       const dispatcher = agent;
       transport = new StreamableHTTPClientTransport(new URL(config.url), {
-        requestInit: { headers: { Authorization: `Bearer ${config.token}` } },
+        authProvider: provider,
         fetch: ((input, init) => {
           // Session replacement must not wait indefinitely for a remote DELETE.
           const signal = init?.method === "DELETE"
@@ -115,7 +107,7 @@ export default function (pi: ExtensionAPI): void {
           return undiciFetch(input, { ...init, signal, dispatcher }) as unknown as Promise<Response>;
         }) as typeof fetch,
       });
-      client = new Client({ name: "pi-switchboard", version: "0.1.0" });
+      client = new Client({ name: "pi-switchboard", version: "0.2.0" });
       const connection = client;
       client.setNotificationHandler(ToolListChangedNotificationSchema, () => {
         if (connection !== client) return;

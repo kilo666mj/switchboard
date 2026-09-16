@@ -45,7 +45,7 @@ func (c *Capability) ExecuteReadOnly(ctx context.Context, name string, arguments
 		}
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		return c.session.CallTool(ctx, &mcp.CallToolParams{Name: binding.upstream, Arguments: arguments})
+		return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: binding.upstream, Arguments: arguments})
 	}
 	return nil, errors.New("tool is not available in this capability")
 }

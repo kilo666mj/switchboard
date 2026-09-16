@@ -38,7 +38,7 @@ client connects to and may:
 
 - Search one or more catalogs.
 - Connect to remote MCP services.
-- Start packaged local MCP servers.
+- Start reviewed, packaged local MCP modules.
 - Hold or obtain upstream credentials.
 - Restrict servers and tools using profiles and policy.
 - Expose downstream tools to clients.
@@ -69,13 +69,18 @@ Qwen Code ----+                         |
 pi adapter ---+                         +-- private capability catalog
                                         +-- profiles and policy
                                         +-- upstream credentials
-                                        `-- remote MCP and REST adapters
+                                        `-- local modules, remote MCP and REST adapters
 ```
 
 The first catalog should be the capability manifests already managed in this
 repository. A separate Registry deployment is unnecessary for the current
 number of private services. A Registry-compatible API can be added later if
 other consumers need to query the catalog directly.
+
+Reviewed local executables use the separate
+[capability module contract](modules.md). Catalog discovery and session
+activation compose those modules, but do not install them or control their
+process lifetime independently.
 
 ## Catalog metadata
 
@@ -151,7 +156,10 @@ schema, description, and safety annotations. It requires:
 
 Switchboard retains stateless Streamable HTTP at `/mcp` and provides
 authenticated stateful sessions at `/mcp/sessions`. Upstream schemas are
-discovered at startup; each downstream session owns its native tool registry.
+discovered at startup or after a degraded capability reconnects; each
+downstream session owns its native tool registry. Recovered capabilities appear
+in newly initialized sessions, while existing sessions reconnect to receive the
+new registry.
 
 Reference:
 

@@ -172,3 +172,7 @@ plan/confirm workflow.
 6. Move upstream listeners behind private networking one at a time.
 7. Verify gateway access, direct-access denial, monitoring, and rollback.
 8. Retire static client and legacy gateway credentials separately.
+
+The reviewed tool sets and identity requirements for the remaining bundled
+capabilities are recorded in
+[Remaining capability policies](remaining-capability-policies.md).

@@ -23,22 +23,27 @@ import (
 
 var validName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
+const delegatedOAuthSubjectHeader = "X-Switchboard-OAuth-Subject"
+
+type delegatedOAuthSubjectContextKey struct{}
+
 type Manifest struct {
-	Title              string                  `json:"title,omitempty"`
-	Description        string                  `json:"description,omitempty"`
-	Tags               []string                `json:"tags,omitempty"`
-	Risk               string                  `json:"risk,omitempty"`
-	Version            int                     `json:"version"`
-	Type               string                  `json:"type"`
-	Name               string                  `json:"name"`
-	Endpoint           string                  `json:"endpoint,omitempty"`
-	EndpointEnv        string                  `json:"endpoint_env,omitempty"`
-	HostEnv            string                  `json:"host_env,omitempty"`
-	Headers            map[string]HeaderValue  `json:"headers,omitempty"`
-	OAuth              *OAuthClientCredentials `json:"oauth_client_credentials,omitempty"`
-	IncludeTools       []string                `json:"include_tools,omitempty"`
-	AnnotationRules    []AnnotationRule        `json:"annotation_rules,omitempty"`
-	InsecureSkipVerify bool                    `json:"insecure_skip_verify,omitempty"`
+	Title               string                  `json:"title,omitempty"`
+	Description         string                  `json:"description,omitempty"`
+	Tags                []string                `json:"tags,omitempty"`
+	Risk                string                  `json:"risk,omitempty"`
+	Version             int                     `json:"version"`
+	Type                string                  `json:"type"`
+	Name                string                  `json:"name"`
+	Endpoint            string                  `json:"endpoint,omitempty"`
+	EndpointEnv         string                  `json:"endpoint_env,omitempty"`
+	HostEnv             string                  `json:"host_env,omitempty"`
+	Headers             map[string]HeaderValue  `json:"headers,omitempty"`
+	OAuth               *OAuthClientCredentials `json:"oauth_client_credentials,omitempty"`
+	IncludeTools        []string                `json:"include_tools,omitempty"`
+	AnnotationRules     []AnnotationRule        `json:"annotation_rules,omitempty"`
+	ForwardOAuthSubject bool                    `json:"forward_oauth_subject,omitempty"`
+	InsecureSkipVerify  bool                    `json:"insecure_skip_verify,omitempty"`
 }
 
 type AnnotationRule struct {
@@ -67,10 +72,12 @@ type HeaderValue struct {
 }
 
 type Capability struct {
-	metadata capability.Metadata
-	name     string
-	session  *mcp.ClientSession
-	tools    []toolBinding
+	metadata            capability.Metadata
+	name                string
+	session             *mcp.ClientSession
+	tools               []toolBinding
+	forwardOAuthSubject bool
+	oauthSubject        string
 }
 
 type toolBinding struct {
@@ -125,11 +132,17 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 	}
 	headers := make(http.Header, len(manifest.Headers))
 	for name, value := range manifest.Headers {
+		if strings.EqualFold(name, delegatedOAuthSubjectHeader) {
+			return nil, fmt.Errorf("header %q is reserved for verified OAuth subject forwarding", delegatedOAuthSubjectHeader)
+		}
 		secret := os.Getenv(value.Env)
 		if value.Env == "" || secret == "" {
 			return nil, fmt.Errorf("environment variable %s for header %q is not set", value.Env, name)
 		}
 		headers.Set(name, value.Prefix+secret)
+	}
+	if manifest.ForwardOAuthSubject && headers.Get("Authorization") == "" && manifest.OAuth == nil {
+		return nil, errors.New("forward_oauth_subject requires authenticated upstream requests")
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if policy != nil {
@@ -138,7 +151,7 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 	if manifest.InsecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit per-capability operator setting
 	}
-	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host}
+	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject}
 	if manifest.OAuth != nil {
 		if headers.Get("Authorization") != "" {
 			return nil, errors.New("set only one of Authorization header and oauth_client_credentials")
@@ -159,7 +172,7 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 	client := mcp.NewClient(&mcp.Implementation{Name: "switchboard", Version: "dev"}, nil)
 	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("connect to %s MCP: %w", manifest.Name, err)
+		return nil, fmt.Errorf("%w: connect to %s MCP: %v", capability.ErrUnavailable, manifest.Name, err)
 	}
 	allowed := make(map[string]bool, len(manifest.IncludeTools))
 	for _, name := range manifest.IncludeTools {
@@ -169,7 +182,7 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 	for tool, listErr := range session.Tools(ctx, nil) {
 		if listErr != nil {
 			_ = session.Close()
-			return nil, fmt.Errorf("list %s tools: %w", manifest.Name, listErr)
+			return nil, fmt.Errorf("%w: list %s tools: %v", capability.ErrUnavailable, manifest.Name, listErr)
 		}
 		if len(manifest.IncludeTools) > 0 && !allowed[tool.Name] {
 			continue
@@ -196,7 +209,7 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 		_ = session.Close()
 		return nil, fmt.Errorf("%s MCP offered no selected tools", manifest.Name)
 	}
-	return &Capability{name: manifest.Name, session: session, tools: tools, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
 }
 
 func matchAnnotations(name string, rules []AnnotationRule) (*mcp.ToolAnnotations, error) {
@@ -272,12 +285,31 @@ func oauthConfig(manifest OAuthClientCredentials) (*clientcredentials.Config, er
 
 func (c *Capability) Name() string { return c.name }
 
+func (c *Capability) BindOAuthSubject(subject string) (capability.Capability, error) {
+	if !c.forwardOAuthSubject {
+		return c, nil
+	}
+	if subject == "" || len(subject) > 1024 || strings.ContainsAny(subject, "\r\n") {
+		return nil, errors.New("invalid delegated OAuth subject")
+	}
+	bound := *c
+	bound.oauthSubject = subject
+	return &bound, nil
+}
+
+func (c *Capability) callContext(ctx context.Context) context.Context {
+	if !c.forwardOAuthSubject || c.oauthSubject == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, delegatedOAuthSubjectContextKey{}, c.oauthSubject)
+}
+
 func (c *Capability) Register(server *mcp.Server) error {
 	for _, binding := range c.tools {
 		tool := *binding.definition
 		upstreamName := binding.upstream
 		server.AddTool(&tool, func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			return c.session.CallTool(ctx, &mcp.CallToolParams{Name: upstreamName, Arguments: request.Params.Arguments})
+			return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: upstreamName, Arguments: request.Params.Arguments})
 		})
 	}
 	return nil
@@ -297,9 +329,10 @@ func rejectRedirect(_ *http.Request, _ []*http.Request) error {
 }
 
 type headerTransport struct {
-	base    http.RoundTripper
-	headers http.Header
-	host    string
+	base                http.RoundTripper
+	headers             http.Header
+	host                string
+	forwardOAuthSubject bool
 }
 
 func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -308,6 +341,12 @@ func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error
 	for name, values := range t.headers {
 		for _, value := range values {
 			clone.Header.Add(name, value)
+		}
+	}
+	clone.Header.Del(delegatedOAuthSubjectHeader)
+	if t.forwardOAuthSubject {
+		if subject, ok := request.Context().Value(delegatedOAuthSubjectContextKey{}).(string); ok && subject != "" {
+			clone.Header.Set(delegatedOAuthSubjectHeader, subject)
 		}
 	}
 	if t.host != "" {

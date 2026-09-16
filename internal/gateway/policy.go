@@ -15,6 +15,13 @@ func toolDecision(policy config.ToolPolicy, capabilityName, toolName string) str
 	return "deny"
 }
 
+// ToolDecision returns the effective configured decision used by discovery and
+// execution. Permission inspection calls this instead of reimplementing policy
+// precedence.
+func ToolDecision(policy config.ToolPolicy, capabilityName, toolName string) string {
+	return toolDecision(policy, capabilityName, toolName)
+}
+
 // Only tools that can execute immediately are advertised to clients. Explicit
 // denies and unimplemented server-side approval requirements remain enforceable
 // for stale native definitions and compatibility calls, but are not discoverable.

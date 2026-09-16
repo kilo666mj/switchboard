@@ -149,6 +149,78 @@ func TestCapabilityUsesOAuthClientCredentials(t *testing.T) {
 	}
 }
 
+func TestCapabilityForwardsOnlyBoundOAuthSubject(t *testing.T) {
+	var delegated atomic.Value
+	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "rendercase", Version: "test"})
+	mcp.AddTool(upstream, &mcp.Tool{Name: "list", Description: "List"},
+		func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, map[string]bool, error) {
+			return nil, map[string]bool{"ok": true}, nil
+		})
+	upstreamHandler, err := mcpkit.StatelessHTTP(func(r *http.Request) *mcp.Server {
+		if r.Header.Get("Authorization") != "Bearer gateway-service-token" {
+			return nil
+		}
+		if subject := r.Header.Get(delegatedOAuthSubjectHeader); subject != "" {
+			delegated.Store(subject)
+		}
+		return upstream
+	}, mcpkit.HTTPOptions{DisableLocalhostProtection: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := httptest.NewServer(upstreamHandler)
+	defer api.Close()
+	t.Setenv("UPSTREAM_TOKEN", "gateway-service-token")
+
+	item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "rendercase", Endpoint: api.URL, ForwardOAuthSubject: true,
+		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer item.Close()
+	if delegated.Load() != nil {
+		t.Fatal("startup request forwarded an OAuth subject")
+	}
+	bound, err := item.BindOAuthSubject("subject-alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := gateway.New("test", "all", []capbase.Capability{bound})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := mcpkittest.Connect(t, server)
+	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "rendercase_list", Arguments: map[string]any{}})
+	if err != nil || result.IsError {
+		t.Fatalf("delegated call failed: result=%#v error=%v", result, err)
+	}
+	if got, _ := delegated.Load().(string); got != "subject-alice" {
+		t.Fatalf("delegated subject = %q", got)
+	}
+	if _, err := item.BindOAuthSubject("bad\r\nsubject"); err == nil {
+		t.Fatal("unsafe delegated subject was accepted")
+	}
+}
+
+func TestForwardOAuthSubjectRequiresAuthenticatedUpstream(t *testing.T) {
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1", ForwardOAuthSubject: true,
+	}); err == nil {
+		item.Close()
+		t.Fatal("unauthenticated delegated identity configuration was accepted")
+	}
+	t.Setenv("UPSTREAM_SUBJECT", "caller-controlled")
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1", ForwardOAuthSubject: true,
+		Headers: map[string]HeaderValue{delegatedOAuthSubjectHeader: {Env: "UPSTREAM_SUBJECT"}},
+	}); err == nil {
+		item.Close()
+		t.Fatal("reserved delegated identity header was accepted from a manifest")
+	}
+}
+
 func TestCapabilityRejectsRedirectBeforeSendingCredentialToDestination(t *testing.T) {
 	var destinationRequests atomic.Int32
 	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

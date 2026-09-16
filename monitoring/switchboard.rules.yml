@@ -1,0 +1,39 @@
+groups:
+  - name: switchboard-authentication
+    rules:
+      - alert: SwitchboardAuthenticationFailures
+        expr: increase(switchboard_authentication_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Switchboard is rejecting repeated authentication attempts
+          description: More than five authentication failures occurred in five minutes and continued for five minutes.
+
+      - alert: SwitchboardUserInfoFailures
+        expr: increase(switchboard_oauth_userinfo_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Switchboard cannot validate OAuth UserInfo groups
+          description: UserInfo retrieval, subject binding, or group validation has failed for two minutes.
+
+      - alert: SwitchboardIdentityPolicyChanged
+        expr: changes(switchboard_identity_policy_hash[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: A Switchboard effective identity policy changed
+          description: The effective policy hash changed for an existing identity-policy component set. Confirm that the change matches an approved policy or upstream tool-catalog deployment.
+
+  - name: switchboard-capabilities
+    rules:
+      - alert: SwitchboardCapabilityUnavailable
+        expr: switchboard_capability_available == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: A Switchboard capability is unavailable
+          description: Switchboard is serving other capabilities, but {{ $labels.capability }} has remained unavailable for two minutes and is being retried with backoff.

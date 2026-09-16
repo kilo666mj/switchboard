@@ -7,6 +7,7 @@
   "risk": "unknown",
   "description": "Access Tintwire messaging tools.",
   "endpoint_env": "TINTWIRE_MCP_URL",
+  "forward_oauth_subject": true,
   "oauth_client_credentials": {
     "token_url_env": "SWITCHBOARD_OAUTH_TOKEN_URL",
     "client_id_env": "TINTWIRE_OAUTH_CLIENT_ID",

@@ -1,63 +1,15 @@
 {
   "version": 1,
+  "type": "module",
   "name": "log_watcher",
   "title": "Log Watcher",
   "tags": ["logs", "alerts", "exclusions"],
   "risk": "mutating",
   "description": "Inspect and manage the centralized log alert filters owned by log_watcher.",
-  "base_url_env": "LOG_WATCHER_API_URL",
-  "headers": {
-    "Authorization": {"env": "LOG_WATCHER_API_TOKEN", "prefix": "Bearer "}
-  },
-  "tools": [
-    {
-      "name": "list_excludes",
-      "description": "List the canonical dynamic log exclusions currently stored by log_watcher. Use this before adding or removing an exclusion.",
-      "method": "GET",
-      "path": "/api/excludes",
-      "safety": "read_only",
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "add_exclude",
-      "description": "Add one dynamic log exclusion. This can hide real incidents. Prefer a narrow distinctive substring, inspect existing exclusions first, and explain the verified false positive in reason. Text, host, process, and pid values use substring matching.",
-      "method": "POST",
-      "path": "/api/excludes",
-      "safety": "mutating",
-      "idempotent": true,
-      "body_arguments": ["type", "value", "reason"],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string", "enum": ["text", "host", "process", "pid"], "description": "Parsed log field to match."},
-          "value": {"type": "string", "minLength": 1, "maxLength": 1024, "description": "Case-sensitive substring whose matching log candidates should be excluded."},
-          "reason": {"type": "string", "minLength": 1, "description": "Why this pattern is a verified false positive and safe to suppress."}
-        },
-        "required": ["type", "value", "reason"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "remove_exclude",
-      "description": "Remove one exact dynamic exclusion entry so matching logs become eligible for alerts again. Inspect current exclusions first and explain the reason for removal.",
-      "method": "DELETE",
-      "path": "/api/excludes",
-      "safety": "mutating",
-      "idempotent": true,
-      "body_arguments": ["type", "value", "reason"],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "type": {"type": "string", "enum": ["text", "host", "process", "pid"]},
-          "value": {"type": "string", "minLength": 1, "maxLength": 1024},
-          "reason": {"type": "string", "minLength": 1, "description": "Why this exclusion should be removed."}
-        },
-        "required": ["type", "value", "reason"],
-        "additionalProperties": false
-      }
-    }
-  ]
+  "command": "/usr/local/libexec/switchboard/switchboard-module-log-watcher",
+  "environment": [
+    "LOG_WATCHER_API_URL",
+    "LOG_WATCHER_API_TOKEN"
+  ],
+  "enforce_egress_policy": true
 }

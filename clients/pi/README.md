@@ -12,23 +12,28 @@ npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 The source bundle includes the lockfile, not node_modules. Keep the installation
 outside worker checkouts. Configure `SWITCHBOARD_PI_CONFIG` to an operator-owned
-JSON file with an HTTPS session endpoint and the name of a credential environment
-variable:
+JSON file with the HTTPS session endpoint and Pi's registered public PKCE client:
 
 ```json
 {
   "url": "https://gateway.example.com/mcp/sessions",
-  "token_env": "SWITCHBOARD_CLIENT_TOKEN"
+  "issuer": "https://identity.example.com",
+  "client_id": "pi-switchboard",
+  "redirect_url": "http://127.0.0.1:18104/callback",
+  "scopes": ["openid", "groups", "mcp:connect", "tools:read", "tools:write", "offline_access"]
 }
 ```
 
-Supply that variable through your credential management system. The default
-configuration path is `~/.pi/agent/switchboard.json`. Optional
+The default configuration path is `~/.pi/agent/switchboard.json`. Run
+`npm --prefix ~/.pi/agent/extensions/switchboard run login` once to authorize
+the client. Tokens are written atomically with mode `0600` to
+`~/.pi/agent/switchboard-oauth.json`; `SWITCHBOARD_PI_TOKEN_FILE` overrides that
+path for isolated testing. Optional
 `SWITCHBOARD_CA_CERTS` selects a CA bundle. If set, it must point to a readable,
 nonempty file; configuration failures stop the connection without falling back
 to system trust. When unset, the adapter tries system bundles. Certificate
-verification stays enabled. Reload pi after installation.
-Do not put credentials in source, archives or gateway capability manifests.
+verification stays enabled. Reload pi after installation. Do not put tokens in
+source, archives, client configuration, or gateway capability manifests.
 
 The gateway profile must allow the intended capabilities. Native tools retain
 their upstream authorization requirements. A Relay upstream credential represents
