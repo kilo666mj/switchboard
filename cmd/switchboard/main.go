@@ -85,12 +85,9 @@ func run() error {
 			}
 		}
 	}
-	var egressPolicy *egress.Policy
-	if cfg.EgressPolicy != nil {
-		egressPolicy, err = egress.New(*cfg.EgressPolicy)
-		if err != nil {
-			return fmt.Errorf("egress policy: %w", err)
-		}
+	egressPolicy, err := egress.New(*cfg.EgressPolicy)
+	if err != nil {
+		return fmt.Errorf("egress policy: %w", err)
 	}
 	var oauthAuthenticator *auth.Authenticator
 	if cfg.OAuth != nil {
@@ -114,7 +111,7 @@ func run() error {
 		}
 		defer closeCapabilities(capabilities)
 		newServer := func() (*mcp.Server, error) {
-			return gateway.NewWithMetrics(version, cfg.Profile, selectCapabilities(capabilities, cfg.Profiles[cfg.Profile]), metrics)
+			return gateway.NewWithMetrics(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(capabilities, cfg.Profiles[cfg.Profile]), metrics)
 		}
 		server, err := newServer()
 		if err != nil {
@@ -141,7 +138,7 @@ func run() error {
 		slog.Warn("capability unavailable at startup", "name", failure.Name, "error", failure.Err)
 	}
 	newServer := func() (*mcp.Server, error) {
-		return gateway.NewWithMetrics(version, cfg.Profile, selectCapabilities(store.Snapshot(), cfg.Profiles[cfg.Profile]), metrics)
+		return gateway.NewWithMetrics(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(store.Snapshot(), cfg.Profiles[cfg.Profile]), metrics)
 	}
 	if len(cfg.Clients) > 0 || cfg.OAuth != nil || cfg.CloudflareAccess != nil {
 		var sessionAuthenticator sessions.IdentityAuthenticator
@@ -314,6 +311,9 @@ func serveHTTPWithSessions(ctx context.Context, cfg config.Config, factory func(
 		return fmt.Errorf("invalid listen address: %w", err)
 	}
 	token := os.Getenv("SWITCHBOARD_BEARER_TOKEN")
+	if err := validateLegacyBearer(token); err != nil {
+		return err
+	}
 	if token == "" && host != "127.0.0.1" && host != "::1" && host != "localhost" && dynamic == nil {
 		return errors.New("SWITCHBOARD_BEARER_TOKEN is required when listening beyond loopback")
 	}
@@ -349,7 +349,7 @@ func serveHTTPWithSessions(ctx context.Context, cfg config.Config, factory func(
 	if oauth != nil {
 		mux.Handle("GET "+oauth.MetadataPath(), oauth)
 	}
-	server := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 32 << 10}
+	server := newHTTPServer(cfg.Listen, mux)
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -362,6 +362,34 @@ func serveHTTPWithSessions(ctx context.Context, cfg config.Config, factory func(
 		return nil
 	}
 	return err
+}
+
+func newHTTPServer(address string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr: address, Handler: preserveSessionStream(handler),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      6 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    32 << 10,
+	}
+}
+
+func preserveSessionStream(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/mcp/sessions" {
+			// A stateful MCP GET may be a long-lived SSE notification stream.
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func validateLegacyBearer(token string) error {
+	if token != "" && len(token) < 32 {
+		return errors.New("SWITCHBOARD_BEARER_TOKEN must contain at least 32 bytes")
+	}
+	return nil
 }
 
 func bearer(token string, next http.Handler) http.Handler {

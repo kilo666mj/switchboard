@@ -252,7 +252,7 @@ func inspectCapabilities(cfg config.Config, client config.Client, toolPolicy con
 			}
 			entry.Tools = append(entry.Tools, PermissionTool{
 				Name: tool.Name, Decision: decision, Source: decisionSource(toolPolicy, name, tool.Name),
-				Callable: entry.Active && (decision == "allow" || decision == "allowed_by_profile"), Limits: limitCopy,
+				Callable: entry.Active && decision == "allow", Limits: limitCopy,
 			})
 		}
 		sort.Slice(entry.Tools, func(i, j int) bool { return entry.Tools[i].Name < entry.Tools[j].Name })
@@ -263,7 +263,7 @@ func inspectCapabilities(cfg config.Config, client config.Client, toolPolicy con
 
 func decisionSource(policy config.ToolPolicy, capabilityName, toolName string) string {
 	if policy.Version == "" {
-		return "profile"
+		return "missing_policy"
 	}
 	if _, ok := policy.Tools[toolName]; ok {
 		return "tool"
@@ -320,6 +320,7 @@ func LintPermissions(cfg config.Config) []PermissionWarning {
 		warnings = append(warnings, PermissionWarning{Code: "disabled_static_clients", Message: fmt.Sprintf("%d static clients are configured but disabled by identity-provider static-client controls", disabledStaticClients)})
 	}
 	referencedToolPolicies := map[string]bool{}
+	referencedToolPolicies[cfg.ToolPolicy] = true
 	for _, client := range cfg.Clients {
 		referencedToolPolicies[client.ToolPolicy] = true
 	}
@@ -374,7 +375,7 @@ func LintPermissions(cfg config.Config) []PermissionWarning {
 		for _, name := range names {
 			policy := policies[name]
 			if policy.ToolPolicy == "" {
-				warnings = append(warnings, PermissionWarning{Code: "whole_profile_allow", Message: fmt.Sprintf("%s policy %q has no tool policy and therefore allows the whole profile %q", provider, name, policy.Profile)})
+				warnings = append(warnings, PermissionWarning{Code: "missing_tool_policy", Message: fmt.Sprintf("%s policy %q has no tool policy and will be rejected", provider, name)})
 			}
 		}
 	}

@@ -2,7 +2,7 @@
 # credential values from your secret manager. Never commit the populated file.
 switchboard_public_origin: https://switchboard.example.internal
 # Leave empty once all clients use the identity-bound /mcp/sessions endpoint.
-# During migration, set a strong legacy /mcp bearer credential here.
+# During migration, set a legacy /mcp bearer credential of at least 32 bytes.
 switchboard_bearer_token: ""
 
 switchboard_oauth_token_url: https://id.example.com/api/oidc/token
@@ -11,8 +11,11 @@ fleetglass_mcp_url: https://fleetglass.example.internal/mcp
 fleetglass_mcp_token: replace-me
 forgejo_mcp_url: https://forgejo-mcp.example.internal/mcp
 forgejo_mcp_token: "{{ lookup('ansible.builtin.env', 'FORGEJO_MCP_TOKEN') }}"
-log_watcher_api_url: http://log-watcher-vip.example.internal:8080
-log_watcher_api_token: "{{ lookup('ansible.builtin.env', 'LOG_WATCHER_API_TOKEN') }}"
+# Optional local module. When enabled, also add `log_watcher: allow` to the
+# selected tool policy and its HTTPS destination to the egress policy.
+switchboard_enable_log_watcher: false
+# log_watcher_api_url: https://log-watcher-vip.example.internal
+# log_watcher_api_token: "{{ lookup('ansible.builtin.env', 'LOG_WATCHER_API_TOKEN') }}"
 parallaxd_mcp_url: https://status.example.internal/mcp
 parallaxd_mcp_token: replace-me
 rendercase_mcp_url: https://rendercase.example.internal/mcp
@@ -35,8 +38,33 @@ taskboard_mcp_token: replace-me
 # for every installation. Retain the legacy bearer during a staged migration.
 switchboard_clients: {}
 switchboard_client_tokens: {}
-switchboard_tool_policies: {}
-switchboard_egress_policy: null
+switchboard_tool_policy: workplace-default
+switchboard_tool_policies:
+  workplace-default:
+    version: example-v1
+    profile: all
+    capabilities:
+      fleetglass: allow
+      forgejo: allow
+      parallaxd: allow
+      rendercase: allow
+      rilldns: allow
+      taskboard: allow
+      tintwire: allow
+      wayminder: allow
+switchboard_egress_policy:
+  allowed_destinations:
+    - dns.example.internal:443
+    - fleetglass.example.internal:443
+    - forgejo-mcp.example.internal:443
+    - id.example.com:443
+    - rendercase.example.internal:443
+    - status.example.internal:443
+    - taskboard.example.internal:443
+    - tintwire.example.internal:443
+    - wayminder.example.internal:443
+  allowed_cidrs:
+    - 192.0.2.0/24
 switchboard_inbound_oauth: null
 switchboard_cloudflare_access: null
 # Set only when an in-place upgrade must add or rotate these two values in the
@@ -70,15 +98,10 @@ switchboard_update_taskboard_credentials: false
 # switchboard_client_tokens:
 #   SWITCHBOARD_CLIENT_WORKSTATION: generate-a-unique-random-token
 
-# Opt-in production egress boundary. List every capability and OAuth token
+# Mandatory egress boundary. List every capability and identity-provider
 # destination using exact host:port syntax and only the networks they may resolve
-# into. HTTPS is mandatory when this policy is present.
-# switchboard_egress_policy:
-#   allowed_destinations:
-#     - inventory.example.internal:443
-#     - id.example.internal:443
-#   allowed_cidrs:
-#     - 192.0.2.0/24
+# into. HTTPS and normal certificate verification are mandatory.
+# Use empty destination and CIDR lists only for an intentional deny-all gateway.
 
 # Prometheus integration used by monitoring.yml. The target must resolve from
 # the monitoring host. Keep TLS verification enabled with a valid internal CA.

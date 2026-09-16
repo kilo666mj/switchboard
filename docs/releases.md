@@ -102,10 +102,9 @@ and installs the pi lockfile with lifecycle scripts disabled before running
 The workflow runs on pushes, pull requests, manual dispatch and weekly schedules,
 with read-only repository permissions and immutable action references.
 
-Local Go and npm checks reported no vulnerabilities on 6 September 2026. These
-are dated advisory-database results; recheck the final candidate before release.
-Hosted workflow execution remains unverified until these files are reviewed and
-available on GitHub. A clean scan does not replace application security review.
+Run both local and hosted dependency checks on the exact release candidate.
+Advisory-database results are time-sensitive, and a clean scan does not replace
+application security review.
 
 ## Continuous integration
 
@@ -117,9 +116,9 @@ synthetic HTTPS adapter tests and build and install the source bundle on Node
 operator credentials or real model provider.
 
 These checks run on pushes, pull requests and manual dispatch with read-only
-repository permissions. They do not publish artifacts or repositories. Hosted
-execution, real-provider/deployed client access, native arm64 execution and final release
-review remain separate requirements.
+repository permissions. They do not publish artifacts or repositories. Require
+successful hosted amd64 and arm64 jobs on the exact candidate; real-provider
+access, deployed-client access, and final release review remain separate.
 
 ## Inline source attribution
 
@@ -147,10 +146,9 @@ Each job verifies `GOHOSTARCH`, runs the source checks on that architecture,
 builds only its matching release archive, and executes the extracted binary
 through the archive smoke verifier. Neither job uses emulation.
 
-This prepares native acceptance for both release targets. Workflow parsing and
-the amd64 archive command have local validation; the arm64 job still needs a
-successful hosted run against the exact publication candidate. Merely adding
-the matrix does not satisfy that release requirement.
+This provides native acceptance for both release targets only when both matrix
+jobs succeed against the exact publication candidate. Merely defining the
+matrix does not satisfy that release requirement.
 
 ## Assembly and header attribution
 

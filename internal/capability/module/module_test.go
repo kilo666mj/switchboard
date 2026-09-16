@@ -40,7 +40,7 @@ func TestCapabilityStartsModuleAndProxiesTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer item.Close()
-	server, err := gateway.New("test", "all", []capbase.Capability{item})
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{item.Name(): "allow"}}, []capbase.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}

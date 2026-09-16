@@ -38,7 +38,7 @@ func TestCapabilityCallsAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := gateway.New("test", "read", []capbase.Capability{capability})
+	server, err := gateway.New("test", "read", "test", config.ToolPolicy{Version: "test", Profile: "read", Capabilities: map[string]string{capability.Name(): "allow"}}, []capbase.Capability{capability})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,6 +57,18 @@ func TestManifestRejectsLiteralAndEnvironmentBaseURL(t *testing.T) {
 	manifest := Manifest{Version: 1, Name: "test", BaseURL: "https://example.com", BaseURLEnv: "TEST_API_URL", Tools: []Tool{{Name: "read", Description: "read", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}}
 	if err := manifest.Validate(); err == nil {
 		t.Fatal("Validate succeeded with two base URL sources")
+	}
+}
+
+func TestManifestRejectsCredentialOverPlainHTTP(t *testing.T) {
+	t.Setenv("TEST_API_TOKEN", "secret")
+	manifest := Manifest{
+		Version: 1, Name: "test", BaseURL: "http://api.example.internal",
+		Headers: map[string]HeaderValue{"Authorization": {Env: "TEST_API_TOKEN", Prefix: "Bearer "}},
+		Tools:   []Tool{{Name: "read", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}},
+	}
+	if err := manifest.Validate(); err == nil {
+		t.Fatal("credential-bearing plaintext REST capability was accepted")
 	}
 }
 

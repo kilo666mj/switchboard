@@ -2,7 +2,6 @@ package remote
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -91,6 +90,10 @@ func New(ctx context.Context, manifest Manifest) (*Capability, error) {
 }
 
 func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy) (*Capability, error) {
+	return newWithTransport(ctx, manifest, policy, nil)
+}
+
+func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Policy, baseTransport *http.Transport) (*Capability, error) {
 	if err := capability.ValidateRisk(manifest.Risk); err != nil {
 		return nil, err
 	}
@@ -99,6 +102,9 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 	}
 	if !validName.MatchString(manifest.Name) {
 		return nil, fmt.Errorf("invalid capability name %q", manifest.Name)
+	}
+	if manifest.InsecureSkipVerify {
+		return nil, errors.New("insecure_skip_verify is prohibited")
 	}
 	endpoint := strings.TrimSpace(manifest.Endpoint)
 	if manifest.EndpointEnv != "" {
@@ -115,9 +121,6 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 		return nil, fmt.Errorf("invalid MCP endpoint %q", endpoint)
 	}
 	if policy != nil {
-		if manifest.InsecureSkipVerify {
-			return nil, errors.New("insecure_skip_verify is prohibited by the egress policy")
-		}
 		if err := policy.ValidateURL(endpoint); err != nil {
 			return nil, fmt.Errorf("%s MCP endpoint violates egress policy: %w", manifest.Name, err)
 		}
@@ -141,15 +144,18 @@ func NewWithEgress(ctx context.Context, manifest Manifest, policy *egress.Policy
 		}
 		headers.Set(name, value.Prefix+secret)
 	}
+	if parsed.Scheme != "https" && (len(headers) > 0 || manifest.OAuth != nil) {
+		return nil, errors.New("credential-bearing MCP capabilities require an HTTPS endpoint")
+	}
 	if manifest.ForwardOAuthSubject && headers.Get("Authorization") == "" && manifest.OAuth == nil {
 		return nil, errors.New("forward_oauth_subject requires authenticated upstream requests")
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport := baseTransport
+	if transport == nil {
+		transport = http.DefaultTransport.(*http.Transport).Clone()
+	}
 	if policy != nil {
 		transport = policy.Transport()
-	}
-	if manifest.InsecureSkipVerify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit per-capability operator setting
 	}
 	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject}
 	if manifest.OAuth != nil {

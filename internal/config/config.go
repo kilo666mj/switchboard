@@ -22,6 +22,7 @@ type Config struct {
 	Listen              string                  `json:"listen"`
 	Transport           string                  `json:"transport"`
 	Profile             string                  `json:"profile"`
+	ToolPolicy          string                  `json:"tool_policy"`
 	CapabilityDir       string                  `json:"capability_dir"`
 	Profiles            map[string][]string     `json:"profiles"`
 	TrustedOrigins      []string                `json:"trusted_origins,omitempty"`
@@ -68,6 +69,19 @@ func (c Config) Validate() error {
 	if !ok {
 		return fmt.Errorf("profile %q is not defined", c.Profile)
 	}
+	if strings.TrimSpace(c.ToolPolicy) == "" {
+		return errors.New("tool_policy is required")
+	}
+	defaultPolicy, ok := c.ToolPolicies[c.ToolPolicy]
+	if !ok {
+		return fmt.Errorf("tool_policy %q is not defined", c.ToolPolicy)
+	}
+	if defaultPolicy.Profile != c.Profile {
+		return fmt.Errorf("profile %q does not match tool policy %q profile %q", c.Profile, c.ToolPolicy, defaultPolicy.Profile)
+	}
+	if c.EgressPolicy == nil {
+		return errors.New("egress_policy is required; use empty allowlists for deny-all")
+	}
 	for profile, selected := range c.Profiles {
 		seen := make(map[string]bool, len(selected))
 		for _, name := range selected {
@@ -90,21 +104,19 @@ func (c Config) Validate() error {
 		return errors.New("session_idle_seconds must be between 0 and 86400")
 	}
 	for name, client := range c.Clients {
-		if strings.TrimSpace(name) == "" || client.TokenEnv == "" {
-			return errors.New("client name and token_env are required")
+		if strings.TrimSpace(name) == "" || client.TokenEnv == "" || client.ToolPolicy == "" {
+			return errors.New("client name, token_env, and tool_policy are required")
 		}
 		allowed, ok := c.Profiles[client.Profile]
 		if !ok {
 			return fmt.Errorf("client %q references undefined profile", name)
 		}
-		if client.ToolPolicy != "" {
-			policy, ok := c.ToolPolicies[client.ToolPolicy]
-			if !ok {
-				return fmt.Errorf("client %q references undefined tool policy %q", name, client.ToolPolicy)
-			}
-			if policy.Profile != client.Profile {
-				return fmt.Errorf("client %q profile %q does not match tool policy %q profile %q", name, client.Profile, client.ToolPolicy, policy.Profile)
-			}
+		policy, ok := c.ToolPolicies[client.ToolPolicy]
+		if !ok {
+			return fmt.Errorf("client %q references undefined tool policy %q", name, client.ToolPolicy)
+		}
+		if policy.Profile != client.Profile {
+			return fmt.Errorf("client %q profile %q does not match tool policy %q profile %q", name, client.Profile, client.ToolPolicy, policy.Profile)
 		}
 		if err := validateCallLimits(client.Limits); err != nil {
 			return fmt.Errorf("client %q limits: %w", name, err)
@@ -332,14 +344,15 @@ func (c Config) validateIdentityPolicy(provider, name string, policy OAuthPolicy
 	if _, ok := c.Profiles[policy.Profile]; !ok {
 		return fmt.Errorf("%s policy %q references undefined profile %q", provider, name, policy.Profile)
 	}
-	if policy.ToolPolicy != "" {
-		toolPolicy, ok := c.ToolPolicies[policy.ToolPolicy]
-		if !ok {
-			return fmt.Errorf("%s policy %q references undefined tool policy %q", provider, name, policy.ToolPolicy)
-		}
-		if toolPolicy.Profile != policy.Profile {
-			return fmt.Errorf("%s policy %q profile %q does not match tool policy %q profile %q", provider, name, policy.Profile, policy.ToolPolicy, toolPolicy.Profile)
-		}
+	if policy.ToolPolicy == "" {
+		return fmt.Errorf("%s policy %q requires an explicit tool_policy", provider, name)
+	}
+	toolPolicy, ok := c.ToolPolicies[policy.ToolPolicy]
+	if !ok {
+		return fmt.Errorf("%s policy %q references undefined tool policy %q", provider, name, policy.ToolPolicy)
+	}
+	if toolPolicy.Profile != policy.Profile {
+		return fmt.Errorf("%s policy %q profile %q does not match tool policy %q profile %q", provider, name, policy.Profile, policy.ToolPolicy, toolPolicy.Profile)
 	}
 	if err := validateCallLimits(policy.Limits); err != nil {
 		return fmt.Errorf("%s policy %q limits: %w", provider, name, err)
@@ -489,8 +502,9 @@ func validateCallLimits(limits *CallLimits) error {
 	return nil
 }
 
-// EgressPolicy is opt-in. When present, every capability and OAuth token URL
-// must use HTTPS, match an exact destination, and resolve only inside these CIDRs.
+// EgressPolicy is mandatory. Every capability and identity-provider URL must
+// use HTTPS, match an exact destination, and resolve only inside these CIDRs.
+// Empty allowlists are a valid deny-all policy.
 type EgressPolicy struct {
 	AllowedDestinations []string `json:"allowed_destinations"`
 	AllowedCIDRs        []string `json:"allowed_cidrs"`

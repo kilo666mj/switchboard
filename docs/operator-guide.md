@@ -46,7 +46,7 @@ Copy the examples without committing local credentials or URLs:
 ```sh
 cp switchboard.example.json switchboard.json
 cp capabilities/rilldns.example.json capabilities/rilldns.json
-export RILLDNS_MCP_URL=http://127.0.0.1:8053/mcp
+export RILLDNS_MCP_URL=https://rilldns.example.internal/mcp
 export RILLDNS_MCP_TOKEN=replace-me
 go run ./cmd/switchboard -config switchboard.json
 ```
@@ -55,7 +55,7 @@ Connect an MCP client to `http://127.0.0.1:8090/mcp`. The operational endpoints
 are `/healthz`, `/readyz`, and `/metrics`.
 
 For a non-loopback stateless `/mcp` listener,
-`SWITCHBOARD_BEARER_TOKEN` is mandatory. The identity-bound `/mcp/sessions`
+`SWITCHBOARD_BEARER_TOKEN` is mandatory and must contain at least 32 bytes. The identity-bound `/mcp/sessions`
 endpoint instead requires configured static clients, OAuth, or Cloudflare
 Access. Capability credentials use only environment-variable references:
 
@@ -68,6 +68,9 @@ Access. Capability credentials use only environment-variable references:
 ```
 
 Do not place credential values in configuration or capability manifests.
+An unauthenticated loopback `/mcp` endpoint is a single-user development mode:
+every local process on that host can call its allowed tools. Use an explicit
+bearer or identity-bound sessions whenever the host is not fully trusted.
 When a trusted reverse proxy connects to a loopback listener while preserving
 an external Host header, set `behind_loopback_proxy` only after ensuring that
 untrusted clients cannot reach the listener directly.
@@ -79,6 +82,7 @@ Profiles limit tool exposure for a particular deployment:
 ```json
 {
   "profile": "infrastructure-read",
+  "tool_policy": "infrastructure-read",
   "profiles": {
     "infrastructure-read": ["rilldns", "fleetglass"],
     "publishing": ["rendercase"]
@@ -124,7 +128,7 @@ it never contains credential values. Module manifests are operator-trusted code
 configuration and must not point at downloaded or user-writable executables.
 The first module is Log Watcher under `modules/log_watcher`.
 
-When a global egress policy is configured, a module must declare
+Every network-capable module must declare
 `"enforce_egress_policy": true`. Switchboard passes the non-secret network
 boundary to the module, which must apply it to every outbound connection. The
 Log Watcher module does so through the same guarded HTTP transport previously
@@ -154,9 +158,9 @@ Generic manifests should expose the upstream application's safe operations,
 not bypass them. A DNS mutation should still call an API operation that requires
 the expected revision, dry-run/plan identifiers, and explicit confirmation.
 
-## Production egress policy
+## Egress policy
 
-An optional top-level `egress_policy` creates a fail-closed outbound boundary:
+The mandatory top-level `egress_policy` creates a fail-closed outbound boundary:
 
 ```json
 {
@@ -170,16 +174,16 @@ An optional top-level `egress_policy` creates a fail-closed outbound boundary:
 }
 ```
 
-When present, every REST base URL, remote MCP endpoint, and OAuth token URL must
+Every REST base URL, remote MCP endpoint, identity-provider URL, and OAuth token URL must
 use HTTPS and match an exact `host:port` entry. `insecure_skip_verify` is
-prohibited. Before each new connection, Switchboard resolves the hostname itself,
+always prohibited. Before each new connection, Switchboard resolves the hostname itself,
 rejects the complete DNS response if any address falls outside the configured
 CIDRs, and dials a validated IP directly. Environment HTTP proxies are disabled
 for these connections because they constitute a separate egress path. Include
 every intentional proxy, tunnel, loopback, or private-network destination
-explicitly. Omitting `egress_policy` preserves the existing operator-controlled
-endpoint behavior for compatibility; workplace production should configure it
-alongside infrastructure-level firewall rules.
+explicitly. Empty destination and CIDR lists form a valid deny-all policy for a
+gateway that needs no outbound network access. Use infrastructure-level firewall
+rules as an independent boundary.
 
 ## Catalog discovery
 
@@ -252,7 +256,7 @@ variable. For example, alongside the existing `profiles` configuration:
 
 The server derives identity from the bearer credential on every request and
 binds each MCP session to that identity. Profiles bound the available
-capabilities. An optional named `tool_policy` authorizes whole capabilities with
+capabilities. Every gateway and identity binding names a `tool_policy`, which authorizes whole capabilities with
 optional exact tool overrides and an auditable policy version. Its decisions are
 `allow`, `deny`, and `require_approval`; an exact tool decision overrides its
 capability decision, and otherwise omitted tools default to deny. References to
@@ -265,8 +269,8 @@ until a server-side approval workflow is configured.
 Capability-level `allow` is an explicit decision to trust that upstream MCP's
 current and future tool set. Switchboard still preserves the upstream tool
 schemas, safety annotations, authorization, and plan/confirm workflows. Use
-exact `tools` overrides to remove exceptional high-impact operations. Omitting
-`tool_policy` retains whole-profile execution for compatibility. The three
+exact `tools` overrides to remove exceptional high-impact operations. Missing
+tool-policy bindings fail startup, and omitted tools deny by default. The three
 permissions default to false: `discover`
 exposes search/describe, `execute` permits native and read-only compatibility
 calls, and `activate` permits session changes when execution is also allowed.
@@ -310,8 +314,8 @@ switchboard permissions diff -config switchboard.json \
 ```
 
 Repeat `-policy`, `-group`, and `-scope` to inspect composed access. The report
-distinguishes exact tool decisions, capability-wide decisions, implicit profile
-access, approval-blocked tools, inactive capabilities, and unavailable
+distinguishes exact tool decisions, explicit capability-wide decisions,
+default-denied tools, approval-blocked tools, inactive capabilities, and unavailable
 upstreams. `-json` is available on every action for review automation. `report`
 and `lint` use configuration only; `explain` loads the relevant upstream
 catalogs so its tool-level answer matches a new live session. Direct `-policy`
@@ -328,9 +332,11 @@ decision, and outcome; and a numeric effective-policy hash for each composed
 policy component set. The 52-bit hash value remains exact in Prometheus and
 allows `changes()` alerts to detect policy or upstream catalog drift across
 gateway restarts. Metrics deliberately omit identities, arguments, results,
-and error text. Protect the endpoint at the reverse proxy or network layer
-because policy names, tool names, and usage volumes may still be operationally
-sensitive. Ready-to-install alert rules are in
+and error text. The endpoint is not authenticated by Switchboard and must not
+be included in a public reverse-proxy route. Allow only the intended monitoring
+scraper through an authenticated proxy location or network boundary because
+policy names, tool names, and usage volumes remain operationally sensitive.
+Ready-to-install alert rules are in
 [`monitoring/switchboard.rules.yml`](../monitoring/switchboard.rules.yml).
 
 ### OAuth resource-server authentication
@@ -472,6 +478,13 @@ MCP; operators manage profiles through configuration and deployment.
 
 The reverse proxy must support POST, GET, DELETE, and streaming responses at
 `/mcp/sessions`. Keep response buffering disabled for tool-list notifications.
+Switchboard bounds request reads and non-streaming response writes; the
+long-lived GET/SSE notification stream is deliberately exempt from the write
+deadline.
+
+Do not attach an MCP SDK debug logger in a sensitive deployment. Debug-level
+SDK output may include tool arguments even though Switchboard's structured
+audit events deliberately exclude them.
 
 ## Compatibility execution
 
@@ -592,9 +605,12 @@ can enable a capability and use `capability_execute` for read-only calls.
 
 ## Deployment
 
-The `ansible/` playbook builds Switchboard and the Log Watcher module on the
-controller, installs the capability manifests and a hardened systemd service,
-and verifies readiness.
+The `ansible/` playbook builds Switchboard, installs the selected capability
+manifests and a hardened systemd service, and verifies readiness. Log Watcher is
+optional: set `switchboard_enable_log_watcher: true` only when its URL, token,
+egress destination, and explicit tool-policy decision are configured. When the
+flag is absent or false, its module, manifest, variables, and credentials are
+not required.
 Copy `inventory.example.ini` to the ignored `inventory.ini` and
 `private.yml.example` to the ignored `private.yml`, then populate deployment
 URLs and secrets before running `ansible-playbook playbook.yml` from that

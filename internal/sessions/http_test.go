@@ -20,6 +20,44 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+func secureTestConfig(cfg *config.Config) {
+	cfg.EgressPolicy = &config.EgressPolicy{}
+	if cfg.ToolPolicies == nil {
+		cfg.ToolPolicies = map[string]config.ToolPolicy{}
+	}
+	for profile, capabilities := range cfg.Profiles {
+		name := "test-" + profile
+		decisions := map[string]string{}
+		for _, capabilityName := range capabilities {
+			decisions[capabilityName] = "allow"
+		}
+		cfg.ToolPolicies[name] = config.ToolPolicy{Version: "test", Profile: profile, Capabilities: decisions}
+	}
+	cfg.ToolPolicy = "test-" + cfg.Profile
+	for name, client := range cfg.Clients {
+		if client.ToolPolicy == "" {
+			client.ToolPolicy = "test-" + client.Profile
+			cfg.Clients[name] = client
+		}
+	}
+	if cfg.OAuth != nil {
+		for name, policy := range cfg.OAuth.Policies {
+			if policy.ToolPolicy == "" {
+				policy.ToolPolicy = "test-" + policy.Profile
+				cfg.OAuth.Policies[name] = policy
+			}
+		}
+	}
+	if cfg.CloudflareAccess != nil {
+		for name, policy := range cfg.CloudflareAccess.Policies {
+			if policy.ToolPolicy == "" {
+				policy.ToolPolicy = "test-" + policy.Profile
+				cfg.CloudflareAccess.Policies[name] = policy
+			}
+		}
+	}
+}
+
 func fixture(t *testing.T) (*Handler, *httptest.Server) {
 	t.Helper()
 	t.Setenv("CLIENT_A", strings.Repeat("a", 32))
@@ -32,6 +70,7 @@ func fixture(t *testing.T) (*Handler, *httptest.Server) {
 		"alice": {TokenEnv: "CLIENT_A", Profile: "all", InitialCapabilities: []string{}, Discover: true, Execute: true, Activate: true},
 		"bob":   {TokenEnv: "CLIENT_B", Profile: "empty", Discover: true, Execute: true, Activate: true},
 	}}
+	secureTestConfig(&cfg)
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	h, err := New(ctx, "test", cfg, []capability.Capability{item})
@@ -60,6 +99,7 @@ func TestUnavailableCapabilityDoesNotBlockHandlerAndCanRecover(t *testing.T) {
 		Clients:      map[string]config.Client{"alice": {TokenEnv: "CLIENT_A", Profile: "all", InitialCapabilities: []string{"healthy", "broken"}, Discover: true, Execute: true}},
 		ToolPolicies: map[string]config.ToolPolicy{},
 	}
+	secureTestConfig(&cfg)
 	h, err := NewWithAuthUnavailable(t.Context(), "test", cfg, []capability.Capability{healthy}, []string{"broken"}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -259,6 +299,7 @@ func TestIdentityLimitsAreSharedAcrossSessions(t *testing.T) {
 	cfg := config.Config{Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"demo"}}, Clients: map[string]config.Client{
 		"alice": {TokenEnv: "CLIENT_A", Profile: "all", Execute: true, Limits: &config.CallLimits{RequestsPerMinute: 1, Burst: 1}},
 	}}
+	secureTestConfig(&cfg)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	handler, err := New(ctx, "test", cfg, []capability.Capability{item})
@@ -312,9 +353,9 @@ func (c *oauthSubjectCapability) Register(server *mcp.Server) error {
 func (fakeOAuthAuthenticator) Authenticate(r *http.Request) (auth.Principal, error) {
 	switch r.Header.Get("Authorization") {
 	case "Bearer oauth-alice-read":
-		return auth.Principal{Identity: "subject-alice", PolicyName: "readers", Policy: config.Client{Profile: "all", Execute: true}}, nil
+		return auth.Principal{Identity: "subject-alice", PolicyName: "readers", Policy: config.Client{Profile: "all", ToolPolicy: "test-all", Execute: true}}, nil
 	case "Bearer oauth-alice-empty":
-		return auth.Principal{Identity: "subject-alice", PolicyName: "empty", Policy: config.Client{Profile: "empty", Execute: true}}, nil
+		return auth.Principal{Identity: "subject-alice", PolicyName: "empty", Policy: config.Client{Profile: "empty", ToolPolicy: "test-empty", Execute: true}}, nil
 	default:
 		return auth.Principal{}, auth.ErrInvalidToken
 	}
@@ -334,7 +375,7 @@ func (fakeAccessAuthenticator) Authenticate(r *http.Request) (auth.Principal, er
 	if r.Header.Get(auth.CloudflareAccessJWTHeader) != "signed-access-assertion" {
 		return auth.Principal{}, auth.ErrInvalidAccessAssertion
 	}
-	return auth.Principal{Identity: "cloudflare_access:subject-alice", Source: "cloudflare_access", PolicyName: "people", Policy: config.Client{Profile: "empty"}}, nil
+	return auth.Principal{Identity: "cloudflare_access:subject-alice", Source: "cloudflare_access", PolicyName: "people", Policy: config.Client{Profile: "empty", ToolPolicy: "test-empty"}}, nil
 }
 
 func (fakeAccessAuthenticator) WriteError(w http.ResponseWriter, _ error) {
@@ -377,6 +418,7 @@ func TestOAuthSessionsBindSubjectAndMappedPolicy(t *testing.T) {
 			},
 		},
 	}
+	secureTestConfig(&cfg)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	handler, err := NewWithAuth(ctx, "test", cfg, []capability.Capability{item}, nil, fakeOAuthAuthenticator{})
@@ -422,6 +464,7 @@ func TestOAuthSessionBindsSubjectOnlyForOAuthClient(t *testing.T) {
 			Policies: map[string]config.OAuthPolicy{"readers": {Version: "pilot-v1", Subjects: []string{"subject-alice"}, Profile: "all", Execute: true}},
 		},
 	}
+	secureTestConfig(&cfg)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	handler, err := NewWithAuth(ctx, "test", cfg, []capability.Capability{&oauthSubjectCapability{}}, nil, fakeOAuthAuthenticator{})
@@ -581,6 +624,7 @@ func TestOAuthStaticClientMigrationSwitch(t *testing.T) {
 			Policies: map[string]config.OAuthPolicy{"reader": {Version: "pilot-v1", Subjects: []string{"subject-alice"}, Profile: "empty"}},
 		},
 	}
+	secureTestConfig(&cfg)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	handler, err := NewWithAuth(ctx, "test", cfg, nil, nil, fakeOAuthAuthenticator{})

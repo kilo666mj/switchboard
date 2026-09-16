@@ -34,19 +34,19 @@ func TestCapabilityDiscoversAndProxiesTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := httptest.NewServer(upstreamHandler)
+	api := httptest.NewTLSServer(upstreamHandler)
 	defer api.Close()
 	t.Setenv("UPSTREAM_TOKEN", "upstream-secret")
 
-	item, err := New(t.Context(), Manifest{
+	item, err := newWithTransport(t.Context(), Manifest{
 		Version: 1, Type: "mcp", Name: "wayminder", Endpoint: api.URL,
 		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
-	})
+	}, nil, api.Client().Transport.(*http.Transport).Clone())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer item.Close()
-	server, err := gateway.New("test", "all", []capbase.Capability{item})
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{item.Name(): "allow"}}, []capbase.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,19 +126,19 @@ func TestCapabilityUsesOAuthClientCredentials(t *testing.T) {
 	t.Setenv("OAUTH_CLIENT_ID", "switchboard")
 	t.Setenv("OAUTH_CLIENT_SECRET", "secret")
 
-	item, err := New(t.Context(), Manifest{
-		Version: 1, Type: "mcp", Name: "rendercase", Endpoint: api.URL + "/mcp", InsecureSkipVerify: true,
+	item, err := newWithTransport(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "rendercase", Endpoint: api.URL + "/mcp",
 		OAuth: &OAuthClientCredentials{
 			TokenURL: api.URL + "/token", ClientIDEnv: "OAUTH_CLIENT_ID", ClientSecretEnv: "OAUTH_CLIENT_SECRET",
 			Scopes: []string{"rendercase:mcp"}, AuthStyle: "params",
 			Parameters: map[string]ParameterValue{"resource": {Value: "https://rendercase.example/mcp"}},
 		},
-	})
+	}, nil, api.Client().Transport.(*http.Transport).Clone())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer item.Close()
-	server, err := gateway.New("test", "all", []capbase.Capability{item})
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{item.Name(): "allow"}}, []capbase.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,14 +168,14 @@ func TestCapabilityForwardsOnlyBoundOAuthSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := httptest.NewServer(upstreamHandler)
+	api := httptest.NewTLSServer(upstreamHandler)
 	defer api.Close()
 	t.Setenv("UPSTREAM_TOKEN", "gateway-service-token")
 
-	item, err := New(t.Context(), Manifest{
+	item, err := newWithTransport(t.Context(), Manifest{
 		Version: 1, Type: "mcp", Name: "rendercase", Endpoint: api.URL, ForwardOAuthSubject: true,
 		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
-	})
+	}, nil, api.Client().Transport.(*http.Transport).Clone())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestCapabilityForwardsOnlyBoundOAuthSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := gateway.New("test", "all", []capbase.Capability{bound})
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{bound.Name(): "allow"}}, []capbase.Capability{bound})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestCapabilityForwardsOnlyBoundOAuthSubject(t *testing.T) {
 
 func TestForwardOAuthSubjectRequiresAuthenticatedUpstream(t *testing.T) {
 	if item, err := New(t.Context(), Manifest{
-		Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1", ForwardOAuthSubject: true,
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "https://127.0.0.1:1", ForwardOAuthSubject: true,
 	}); err == nil {
 		item.Close()
 		t.Fatal("unauthenticated delegated identity configuration was accepted")
@@ -229,21 +229,32 @@ func TestCapabilityRejectsRedirectBeforeSendingCredentialToDestination(t *testin
 	}))
 	defer destination.Close()
 
-	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	redirector := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Redirect(w, nil, destination.URL, http.StatusTemporaryRedirect)
 	}))
 	defer redirector.Close()
 	t.Setenv("UPSTREAM_TOKEN", "redirect-canary")
 
-	if item, err := New(t.Context(), Manifest{
+	if item, err := newWithTransport(t.Context(), Manifest{
 		Version: 1, Type: "mcp", Name: "test", Endpoint: redirector.URL,
 		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
-	}); err == nil {
+	}, nil, redirector.Client().Transport.(*http.Transport).Clone()); err == nil {
 		item.Close()
 		t.Fatal("redirected MCP endpoint was accepted")
 	}
 	if got := destinationRequests.Load(); got != 0 {
 		t.Fatalf("redirect destination received %d requests", got)
+	}
+}
+
+func TestCapabilityRejectsCredentialOverPlainHTTP(t *testing.T) {
+	t.Setenv("UPSTREAM_TOKEN", "secret")
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "http://api.example.internal/mcp",
+		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
+	}); err == nil {
+		item.Close()
+		t.Fatal("credential-bearing plaintext MCP capability was accepted")
 	}
 }
 
@@ -262,17 +273,24 @@ func TestOAuthTokenRequestRejectsRedirect(t *testing.T) {
 	t.Setenv("OAUTH_CLIENT_ID", "switchboard")
 	t.Setenv("OAUTH_CLIENT_SECRET", "redirect-canary")
 
-	if item, err := New(t.Context(), Manifest{
-		Version: 1, Type: "mcp", Name: "test", Endpoint: redirector.URL, InsecureSkipVerify: true,
+	if item, err := newWithTransport(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: redirector.URL,
 		OAuth: &OAuthClientCredentials{
 			TokenURL: redirector.URL, ClientIDEnv: "OAUTH_CLIENT_ID", ClientSecretEnv: "OAUTH_CLIENT_SECRET",
 		},
-	}); err == nil {
+	}, nil, redirector.Client().Transport.(*http.Transport).Clone()); err == nil {
 		item.Close()
 		t.Fatal("redirected OAuth token endpoint was accepted")
 	}
 	if got := destinationRequests.Load(); got != 0 {
 		t.Fatalf("OAuth redirect destination received %d requests", got)
+	}
+}
+
+func TestCapabilityRejectsInsecureSkipVerifyWithoutEgressPolicy(t *testing.T) {
+	if item, err := New(t.Context(), Manifest{Version: 1, Type: "mcp", Name: "test", Endpoint: "https://api.example.internal/mcp", InsecureSkipVerify: true}); err == nil {
+		item.Close()
+		t.Fatal("insecure_skip_verify was accepted without an egress policy")
 	}
 }
 
@@ -352,7 +370,7 @@ func TestIncludeToolsRemainRestrictedAfterLastMatch(t *testing.T) {
 	if len(d.Tools) != 1 || d.Tools[0].Name != "test_a_allowed" {
 		t.Fatalf("include list leaked tools: %+v", d.Tools)
 	}
-	server, err := gateway.New("test", "test", []capbase.Capability{item})
+	server, err := gateway.New("test", "test", "test", config.ToolPolicy{Version: "test", Profile: "test", Capabilities: map[string]string{item.Name(): "allow"}}, []capbase.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}

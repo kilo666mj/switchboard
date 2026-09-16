@@ -69,8 +69,12 @@ func TestPolicyDialsValidatedIPAddressDirectly(t *testing.T) {
 }
 
 func TestPolicyConfigurationFailsClosed(t *testing.T) {
+	if _, err := New(config.EgressPolicy{}); err != nil {
+		t.Fatalf("deny-all policy rejected: %v", err)
+	}
 	for _, cfg := range []config.EgressPolicy{
-		{},
+		{AllowedDestinations: []string{"api.example.internal:443"}},
+		{AllowedCIDRs: []string{"192.0.2.0/24"}},
 		{AllowedDestinations: []string{"missing-port.example.internal"}, AllowedCIDRs: []string{"192.0.2.0/24"}},
 		{AllowedDestinations: []string{"api.example.internal:443"}, AllowedCIDRs: []string{"invalid"}},
 		{AllowedDestinations: []string{"api.example.internal:443", "API.EXAMPLE.INTERNAL:443"}, AllowedCIDRs: []string{"192.0.2.0/24"}},

@@ -74,6 +74,9 @@ func (m *Manifest) Validate() error {
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return fmt.Errorf("invalid base URL %q", baseURL)
 	}
+	if parsed.Scheme != "https" && len(m.Headers) > 0 {
+		return errors.New("credential-bearing REST capabilities require an HTTPS base URL")
+	}
 	if len(m.Tools) == 0 {
 		return errors.New("at least one tool is required")
 	}

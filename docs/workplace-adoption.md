@@ -318,17 +318,17 @@ Before production:
 - restrict egress to reviewed destinations, ports, and protocols;
 - defend against DNS rebinding, loopback/link-local access, and cloud metadata
   endpoints;
-- require valid TLS and prohibit `insecure_skip_verify` in production policy;
+- require valid TLS; Switchboard rejects `insecure_skip_verify` unconditionally;
 - consider mutual TLS between gateway and sensitive upstreams;
 - store credentials in the approved secret manager or workload identity system;
 - automate rotation without distributing downstream credentials to clients; and
 - deploy behind the approved ingress, WAF, and network segmentation.
 
-Switchboard now provides an optional egress policy requiring HTTPS, exact
+Switchboard requires an egress policy with HTTPS, exact
 destination `host:port` entries, and approved result CIDRs. It rejects a DNS
 answer if any address falls outside the policy and dials a validated address
 directly, preventing a second resolver lookup from rebinding the connection.
-The policy also prohibits `insecure_skip_verify` and environment proxy routing.
+TLS verification cannot be disabled, and the policy prohibits environment proxy routing.
 Production still needs organization-reviewed destinations and CIDRs plus
 independent network-layer enforcement.
 

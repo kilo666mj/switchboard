@@ -69,7 +69,7 @@ func run() error {
 func moduleEgressPolicy() (*egress.Policy, error) {
 	raw := os.Getenv("SWITCHBOARD_MODULE_EGRESS_POLICY")
 	if raw == "" {
-		return nil, nil
+		return nil, fmt.Errorf("SWITCHBOARD_MODULE_EGRESS_POLICY is required")
 	}
 	var cfg config.EgressPolicy
 	decoder := json.NewDecoder(strings.NewReader(raw))

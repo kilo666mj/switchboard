@@ -3,6 +3,7 @@ package sessions
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kilo666mj/switchboard/internal/capability"
@@ -23,7 +24,7 @@ func permissionFixture(t *testing.T) (config.Config, []capability.Capability) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{
-		Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"demo"}},
+		Transport: "http", Profile: "all", ToolPolicy: "read", Profiles: map[string][]string{"all": {"demo"}}, EgressPolicy: &config.EgressPolicy{},
 		ToolPolicies: map[string]config.ToolPolicy{
 			"read":  {Version: "v1", Profile: "all", Tools: map[string]string{"demo_status": "allow"}},
 			"block": {Version: "v1", Profile: "all", Tools: map[string]string{"demo_status": "deny"}},
@@ -106,6 +107,9 @@ func TestLintPermissionsHighlightsOperatorHazards(t *testing.T) {
 	warnings := LintPermissions(cfg)
 	codes := map[string]bool{}
 	for _, warning := range warnings {
+		if warning.Code == "unreferenced_tool_policy" && strings.Contains(warning.Message, `"read"`) {
+			t.Fatalf("top-level tool policy reported as unreferenced: %#v", warnings)
+		}
 		codes[warning.Code] = true
 	}
 	for _, code := range []string{"approval_unavailable", "broad_capability_allow", "disabled_static_clients", "duplicate_profile"} {

@@ -24,7 +24,8 @@ func permissionCommandFixture(t *testing.T) string {
 	}
 	writeJSONFixture(t, filepath.Join(capabilityDir, "demo.json"), manifest)
 	cfg := config.Config{
-		Transport: "http", Listen: "127.0.0.1:0", Profile: "all", CapabilityDir: capabilityDir,
+		Transport: "http", Listen: "127.0.0.1:0", Profile: "all", ToolPolicy: "read", CapabilityDir: capabilityDir,
+		EgressPolicy: &config.EgressPolicy{AllowedDestinations: []string{"demo.example.test:443"}, AllowedCIDRs: []string{"192.0.2.0/24"}},
 		Profiles:     map[string][]string{"all": {"demo"}},
 		ToolPolicies: map[string]config.ToolPolicy{"read": {Version: "v1", Profile: "all", Tools: map[string]string{"demo_status": "allow"}}},
 		OAuth: &config.OAuthConfig{

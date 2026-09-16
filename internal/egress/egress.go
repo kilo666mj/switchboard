@@ -1,4 +1,4 @@
-// Package egress enforces an optional, explicit outbound network boundary.
+// Package egress enforces an explicit outbound network boundary.
 package egress
 
 import (
@@ -24,8 +24,8 @@ type Policy struct {
 }
 
 func New(cfg config.EgressPolicy) (*Policy, error) {
-	if len(cfg.AllowedDestinations) == 0 || len(cfg.AllowedCIDRs) == 0 {
-		return nil, fmt.Errorf("egress policy requires allowed_destinations and allowed_cidrs")
+	if (len(cfg.AllowedDestinations) == 0) != (len(cfg.AllowedCIDRs) == 0) {
+		return nil, fmt.Errorf("egress policy requires both allowed_destinations and allowed_cidrs, or neither for deny-all")
 	}
 	policy := &Policy{config: cfg, destinations: map[string]bool{}, lookup: net.DefaultResolver.LookupIP}
 	for _, raw := range cfg.AllowedDestinations {

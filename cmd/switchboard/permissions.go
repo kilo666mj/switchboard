@@ -448,7 +448,7 @@ func formatToolState(state *permissionToolState) string {
 	if state.Callable {
 		return "callable/" + state.Source
 	}
-	if !state.Active && (state.Decision == "allow" || state.Decision == "allowed_by_profile") {
+	if !state.Active && state.Decision == "allow" {
 		return "inactive/" + state.Source
 	}
 	return state.Decision + "/" + state.Source

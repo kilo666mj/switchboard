@@ -15,6 +15,7 @@ import (
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/mcpkit/mcpkittest"
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -49,7 +50,7 @@ func TestCompatibilityExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer item.Close()
-	server, err := gateway.New("test", "restricted", []capability.Capability{item})
+	server, err := gateway.New("test", "restricted", "test", config.ToolPolicy{Version: "test", Profile: "restricted", Capabilities: map[string]string{item.Name(): "allow"}}, []capability.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}

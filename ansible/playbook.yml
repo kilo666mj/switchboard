@@ -8,16 +8,16 @@
     switchboard_build_dir: "{{ playbook_dir }}/.build"
     switchboard_binary: "{{ switchboard_build_dir }}/switchboard"
     switchboard_log_watcher_module_binary: "{{ switchboard_build_dir }}/switchboard-module-log-watcher"
-    switchboard_capabilities:
+    switchboard_default_capabilities:
       - fleetglass
       - forgejo
-      - log_watcher
       - parallaxd
       - rendercase
       - rilldns
       - taskboard
       - tintwire
       - wayminder
+    switchboard_capabilities: "{{ switchboard_default_capabilities + (['log_watcher'] if (switchboard_enable_log_watcher | default(false) | bool) else []) }}"
 
   pre_tasks:
     - name: Validate private deployment inputs
@@ -25,13 +25,15 @@
         that:
           - switchboard_public_origin | length > 0
           - (switchboard_bearer_token | default('') | length == 0) or (switchboard_bearer_token | length >= 32)
+          - switchboard_tool_policy | length > 0
+          - switchboard_tool_policy in switchboard_tool_policies
+          - switchboard_egress_policy.allowed_destinations | length > 0
+          - switchboard_egress_policy.allowed_cidrs | length > 0
           - switchboard_oauth_token_url | length > 0
           - fleetglass_mcp_url | length > 0
           - fleetglass_mcp_token | length >= 32
           - forgejo_mcp_url | length > 0
           - forgejo_mcp_token | length >= 32
-          - log_watcher_api_url | length > 0
-          - log_watcher_api_token | length >= 32
           - parallaxd_mcp_url | length > 0
           - parallaxd_mcp_token | length >= 32
           - rendercase_mcp_url | length > 0
@@ -52,7 +54,6 @@
           - "'placeholder' not in (switchboard_bearer_token | default('') | lower)"
           - "'placeholder' not in (fleetglass_mcp_token | lower)"
           - "'placeholder' not in (forgejo_mcp_token | lower)"
-          - "'placeholder' not in (log_watcher_api_token | lower)"
           - "'placeholder' not in (parallaxd_mcp_token | lower)"
           - "'placeholder' not in (rendercase_oauth_client_id | lower)"
           - "'placeholder' not in (rendercase_oauth_client_secret | lower)"
@@ -64,6 +65,17 @@
         fail_msg: Populate ansible/private.yml with deployment URLs and credentials.
       no_log: true
       when: not (switchboard_reuse_upstream_credentials | default(false) | bool)
+
+    - name: Validate optional Log Watcher deployment inputs
+      ansible.builtin.assert:
+        that:
+          - log_watcher_api_url | length > 0
+          - log_watcher_api_token | length >= 32
+          - "'placeholder' not in (log_watcher_api_token | lower)"
+      no_log: true
+      when:
+        - switchboard_enable_log_watcher | default(false) | bool
+        - not (switchboard_reuse_upstream_credentials | default(false) | bool)
 
     - name: Validate the target architecture
       ansible.builtin.assert:
@@ -98,6 +110,8 @@
       ansible.builtin.assert:
         that:
           - item.value.token_env in (switchboard_client_tokens | default({}))
+          - item.value.tool_policy is defined
+          - item.value.tool_policy in switchboard_tool_policies
       loop: "{{ (switchboard_clients | default({})) | dict2items }}"
       no_log: true
 
@@ -156,6 +170,7 @@
       delegate_to: localhost
       become: false
       run_once: true
+      when: switchboard_enable_log_watcher | default(false) | bool
       changed_when: true
 
   tasks:
@@ -289,6 +304,7 @@
         group: root
         mode: "0755"
       notify: Restart Switchboard
+      when: switchboard_enable_log_watcher | default(false) | bool
 
     - name: Install capability manifests
       ansible.builtin.copy:

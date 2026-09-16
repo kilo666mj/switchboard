@@ -67,8 +67,17 @@ def main():
         # inheriting operator credentials. Verify the version through MCP itself.
         (root / 'capabilities').mkdir()
         config_path = root / 'switchboard.json'
-        config_path.write_text(json.dumps({'transport': 'stdio', 'profile': 'empty',
-                                          'profiles': {'empty': []}, 'capability_dir': 'capabilities'}))
+        config_path.write_text(json.dumps({
+            'transport': 'stdio',
+            'profile': 'empty',
+            'tool_policy': 'empty',
+            'profiles': {'empty': []},
+            'tool_policies': {
+                'empty': {'version': 'release-smoke', 'profile': 'empty', 'capabilities': {}, 'tools': {}}
+            },
+            'egress_policy': {'allowed_destinations': [], 'allowed_cidrs': []},
+            'capability_dir': 'capabilities',
+        }))
         env = {'PATH': '/usr/bin:/bin', 'HOME': str(root), 'LANG': 'C.UTF-8'}
         subprocess.run([str(binary), '-help'], cwd=root, env=env, check=True, capture_output=True, timeout=10)
         process = subprocess.Popen([str(binary), '-config', str(config_path)], cwd=root, env=env,
@@ -104,8 +113,12 @@ def main():
         module_binary.chmod(0o755)
         module_env = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8',
                       'SWITCHBOARD_MODULE_NAME': 'log_watcher',
-                      'LOG_WATCHER_API_URL': 'http://127.0.0.1:1',
-                      'LOG_WATCHER_API_TOKEN': 'release-smoke-placeholder'}
+                      'LOG_WATCHER_API_URL': 'https://127.0.0.1:1',
+                      'LOG_WATCHER_API_TOKEN': 'release-smoke-placeholder',
+                      'SWITCHBOARD_MODULE_EGRESS_POLICY': json.dumps({
+                          'allowed_destinations': ['127.0.0.1:1'],
+                          'allowed_cidrs': ['127.0.0.0/8'],
+                      })}
         process = subprocess.Popen([str(module_binary)], cwd=root, env=module_env,
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         try:

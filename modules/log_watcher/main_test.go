@@ -9,7 +9,7 @@ import (
 )
 
 func TestEmbeddedAPIManifestPreservesTools(t *testing.T) {
-	t.Setenv("LOG_WATCHER_API_URL", "http://127.0.0.1:1")
+	t.Setenv("LOG_WATCHER_API_URL", "https://127.0.0.1:1")
 	t.Setenv("LOG_WATCHER_API_TOKEN", "test-token")
 	var manifest caprest.Manifest
 	decoder := json.NewDecoder(strings.NewReader(string(manifestJSON)))
@@ -41,6 +41,10 @@ func TestEmbeddedAPIManifestPreservesTools(t *testing.T) {
 }
 
 func TestModuleEgressPolicy(t *testing.T) {
+	t.Setenv("SWITCHBOARD_MODULE_EGRESS_POLICY", "")
+	if _, err := moduleEgressPolicy(); err == nil {
+		t.Fatal("missing module egress policy was accepted")
+	}
 	t.Setenv("SWITCHBOARD_MODULE_EGRESS_POLICY", `{"allowed_destinations":["api.example.internal:443"],"allowed_cidrs":["192.0.2.0/24"]}`)
 	policy, err := moduleEgressPolicy()
 	if err != nil {

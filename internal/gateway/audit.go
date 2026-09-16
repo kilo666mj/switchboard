@@ -44,7 +44,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 
 			started := time.Now()
 			correlationID := rand.Text()
-			decision, outcome := "allowed_by_profile", "success"
+			decision, outcome := "allow", "success"
 			var result mcp.Result
 			var err error
 			if capabilityName != "switchboard" {
@@ -57,7 +57,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 			case "require_approval":
 				outcome = "approval_required"
 				result = toolPolicyError("tool requires server-side approval, which is not configured")
-			case "allow", "allowed_by_profile":
+			case "allow":
 				release, limited := controller.Admit(toolName)
 				if limited != "" {
 					outcome = limited

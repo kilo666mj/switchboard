@@ -18,10 +18,13 @@ import (
 // NewSession creates an isolated tool registry. The caller owns authentication,
 // expiry, and session IDs; allowed capabilities have already been profile-filtered.
 func NewSession(version, id, identity string, policy config.Client, toolPolicy config.ToolPolicy, controller *CallController, metrics *observability.Metrics, allowed []capability.Capability) (*mcp.Server, error) {
+	if policy.ToolPolicy == "" || toolPolicy.Version == "" {
+		return nil, fmt.Errorf("explicit tool policy is required")
+	}
 	if err := ValidateToolPolicy(toolPolicy, allowed); err != nil {
 		return nil, err
 	}
-	if toolPolicy.Version != "" && toolPolicy.Profile != policy.Profile {
+	if toolPolicy.Profile != policy.Profile {
 		return nil, fmt.Errorf("tool policy profile %q does not match client profile %q", toolPolicy.Profile, policy.Profile)
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "switchboard", Version: version}, &mcp.ServerOptions{
@@ -157,9 +160,6 @@ func registerVisibleTools(server *mcp.Server, item capability.Capability, policy
 	if err := item.Register(server); err != nil {
 		return err
 	}
-	if policy.Version == "" {
-		return nil
-	}
 	describer := item.(capability.Describer)
 	for _, tool := range describer.Describe().Tools {
 		if !toolVisible(policy, item.Name(), tool.Name) {
@@ -180,7 +180,7 @@ func ValidateToolPolicy(policy config.ToolPolicy, allowed []capability.Capabilit
 // capability. Those entries are validated when the capability recovers.
 func ValidateToolPolicyAvailable(policy config.ToolPolicy, allowed []capability.Capability, unavailable map[string]bool) error {
 	if policy.Version == "" {
-		return nil
+		return fmt.Errorf("explicit tool policy is required")
 	}
 	available := map[string]bool{}
 	capabilities := map[string]bool{}

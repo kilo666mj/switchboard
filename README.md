@@ -16,7 +16,7 @@ client connection.
 - OAuth/OIDC or Cloudflare Access identity-bound sessions
 - Capability discovery and dynamic activation
 - Environment-backed credentials; manifests contain no secrets
-- Redirect, response-size, timeout, and optional egress restrictions
+- Mandatory fail-closed egress policy with exact destinations and CIDRs
 - Structured audit events and Prometheus-compatible metrics
 
 Switchboard is the composition layer, not a replacement for upstream safety.
@@ -31,7 +31,7 @@ Requirements: Go 1.26 or newer.
 cp switchboard.example.json switchboard.json
 cp capabilities/rilldns.example.json capabilities/rilldns.json
 
-export RILLDNS_MCP_URL=http://127.0.0.1:8053/mcp
+export RILLDNS_MCP_URL=https://rilldns.example.internal/mcp
 export RILLDNS_MCP_TOKEN=replace-me
 
 go run ./cmd/switchboard -config switchboard.json
@@ -45,6 +45,7 @@ Example profile:
 ```json
 {
   "profile": "infrastructure-read",
+  "tool_policy": "infrastructure-read",
   "profiles": {
     "infrastructure-read": ["rilldns", "fleetglass"],
     "publishing": ["rendercase"]
@@ -67,7 +68,7 @@ Do not put credential values in configuration or capability manifests.
 ## Authentication and permissions
 
 The stateless `/mcp` endpoint supports loopback-only unauthenticated use or a
-static bearer credential. The stateful `/mcp/sessions` endpoint supports unique
+static bearer credential of at least 32 bytes. The stateful `/mcp/sessions` endpoint supports unique
 static clients, OAuth/OIDC resource-server authentication, and Cloudflare
 Access assertions from a trusted ingress.
 
@@ -98,10 +99,17 @@ switchboard permissions diff -config switchboard.json \
 - Identity sessions fail closed when no policy matches.
 - Requests containing both OAuth and Cloudflare Access credentials are rejected.
 - Upstream secrets stay in the process environment.
-- Optional egress policy restricts exact destinations and CIDRs and resists DNS
+- The mandatory egress policy restricts exact destinations and CIDRs and resists DNS
   rebinding by validating and directly dialing resolved addresses.
+- TLS verification cannot be disabled for upstream MCP connections.
+- Every gateway and identity binding names an explicit tool policy; omitted
+  tools deny by default.
 - Native mutating tools retain upstream approval and confirmation semantics.
 - Audit events omit tool arguments, results, and error text.
+- Never attach a debug MCP logger in a sensitive deployment because upstream
+  SDK debug output may contain tool arguments.
+- Do not expose `/metrics` publicly; restrict it to the monitoring path at the
+  reverse proxy or network boundary.
 
 Review the examples before exposing Switchboard outside a trusted network.
 

@@ -10,11 +10,20 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func New(version, profile string, capabilities []capability.Capability) (*mcp.Server, error) {
-	return NewWithMetrics(version, profile, capabilities, nil)
+func New(version, profile, policyName string, policy config.ToolPolicy, capabilities []capability.Capability) (*mcp.Server, error) {
+	return NewWithMetrics(version, profile, policyName, policy, capabilities, nil)
 }
 
-func NewWithMetrics(version, profile string, capabilities []capability.Capability, metrics *observability.Metrics) (*mcp.Server, error) {
+func NewWithMetrics(version, profile, policyName string, policy config.ToolPolicy, capabilities []capability.Capability, metrics *observability.Metrics) (*mcp.Server, error) {
+	if policy.Version == "" {
+		return nil, fmt.Errorf("explicit tool policy is required")
+	}
+	if policy.Profile != profile {
+		return nil, fmt.Errorf("tool policy profile %q does not match gateway profile %q", policy.Profile, profile)
+	}
+	if err := ValidateToolPolicy(policy, capabilities); err != nil {
+		return nil, err
+	}
 	server, err := mcpkit.NewServer(mcpkit.ServerConfig{
 		Name:         "switchboard",
 		Version:      version,
@@ -29,11 +38,11 @@ func NewWithMetrics(version, profile string, capabilities []capability.Capabilit
 			return nil, fmt.Errorf("duplicate capability %q", item.Name())
 		}
 		seen[item.Name()] = true
-		if err := item.Register(server); err != nil {
+		if err := registerVisibleTools(server, item, policy); err != nil {
 			return nil, fmt.Errorf("register capability %s: %w", item.Name(), err)
 		}
 	}
-	registerCatalog(server, capabilities, config.ToolPolicy{})
+	registerCatalog(server, capabilities, policy)
 	registerExecutor(server, capabilities)
 	toolOwners := map[string]string{}
 	for _, item := range capabilities {
@@ -43,6 +52,6 @@ func NewWithMetrics(version, profile string, capabilities []capability.Capabilit
 			}
 		}
 	}
-	registerAuditMiddleware(server, "legacy-shared", profile, "legacy", "", nil, "", toolOwners, "", config.ToolPolicy{}, nil, metrics)
+	registerAuditMiddleware(server, "legacy-shared", profile, "legacy", "", nil, "", toolOwners, policyName, policy, nil, metrics)
 	return server, nil
 }

@@ -50,6 +50,9 @@ func registerCatalog(server *mcp.Server, items []capability.Capability, policy c
 			}
 		}
 		d.Tools = visible
+		if len(d.Tools) == 0 {
+			continue
+		}
 		sort.Slice(d.Tools, func(i, j int) bool { return d.Tools[i].Name < d.Tools[j].Name })
 		entries = append(entries, d)
 	}

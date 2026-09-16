@@ -4,9 +4,36 @@ import "testing"
 
 func TestValidateProfile(t *testing.T) {
 	t.Parallel()
-	cfg := Config{Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {"rilldns", "fleetglass"}}}
+	cfg := Config{Transport: "http", Profile: "read", ToolPolicy: "read", Profiles: map[string][]string{"read": {"rilldns", "fleetglass"}}, ToolPolicies: map[string]ToolPolicy{"read": {Version: "v1", Profile: "read", Capabilities: map[string]string{"rilldns": "allow"}}}, EgressPolicy: &EgressPolicy{}}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestValidateRequiresSecurityBoundaries(t *testing.T) {
+	valid := Config{
+		Transport: "http", Profile: "read", ToolPolicy: "read",
+		Profiles:     map[string][]string{"read": {"demo"}},
+		ToolPolicies: map[string]ToolPolicy{"read": {Version: "v1", Profile: "read", Tools: map[string]string{"demo_status": "allow"}}},
+		EgressPolicy: &EgressPolicy{},
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	missingEgress := valid
+	missingEgress.EgressPolicy = nil
+	if err := missingEgress.Validate(); err == nil {
+		t.Fatal("missing egress policy accepted")
+	}
+	missingToolPolicy := valid
+	missingToolPolicy.ToolPolicy = ""
+	if err := missingToolPolicy.Validate(); err == nil {
+		t.Fatal("missing top-level tool policy accepted")
+	}
+	missingClientPolicy := valid
+	missingClientPolicy.Clients = map[string]Client{"client": {TokenEnv: "TOKEN", Profile: "read"}}
+	if err := missingClientPolicy.Validate(); err == nil {
+		t.Fatal("client without a tool policy accepted")
 	}
 }
 
@@ -25,7 +52,7 @@ func TestClientPolicyValidation(t *testing.T) {
 		{TokenEnv: "TOKEN", Profile: "all", InitialCapabilities: []string{"hidden"}},
 		{TokenEnv: "TOKEN", Profile: "all", InitialCapabilities: []string{"demo", "demo"}},
 	} {
-		cfg := Config{Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"demo"}}, Clients: map[string]Client{"test": client}}
+		cfg := Config{Transport: "http", Profile: "all", ToolPolicy: "base", Profiles: map[string][]string{"all": {"demo"}}, ToolPolicies: map[string]ToolPolicy{"base": {Version: "v1", Profile: "all"}}, EgressPolicy: &EgressPolicy{}, Clients: map[string]Client{"test": client}}
 		if cfg.Validate() == nil {
 			t.Fatalf("invalid client accepted: %+v", client)
 		}
@@ -34,9 +61,11 @@ func TestClientPolicyValidation(t *testing.T) {
 
 func TestToolPolicyValidation(t *testing.T) {
 	valid := Config{
-		Transport: "http",
-		Profile:   "read",
-		Profiles:  map[string][]string{"read": {"demo"}},
+		Transport:    "http",
+		Profile:      "read",
+		ToolPolicy:   "pilot",
+		EgressPolicy: &EgressPolicy{},
+		Profiles:     map[string][]string{"read": {"demo"}},
 		ToolPolicies: map[string]ToolPolicy{"pilot": {
 			Version: "v1", Profile: "read", Capabilities: map[string]string{"demo": "allow"}, Tools: map[string]string{"demo_status": "deny"},
 		}},
@@ -56,6 +85,7 @@ func TestToolPolicyValidation(t *testing.T) {
 		cfg := valid
 		cfg.Clients = nil
 		cfg.ToolPolicies = map[string]ToolPolicy{name: policy}
+		cfg.ToolPolicy = name
 		if cfg.Validate() == nil {
 			t.Fatalf("invalid tool policy %q accepted", name)
 		}
@@ -64,7 +94,7 @@ func TestToolPolicyValidation(t *testing.T) {
 
 func TestCloudflareAccessConfigurationValidation(t *testing.T) {
 	valid := Config{
-		Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {"demo"}},
+		Transport: "http", Profile: "read", ToolPolicy: "full", Profiles: map[string][]string{"read": {"demo"}}, EgressPolicy: &EgressPolicy{},
 		Clients:      map[string]Client{"work": {TokenEnv: "WORK_TOKEN", Profile: "read", ToolPolicy: "full"}},
 		ToolPolicies: map[string]ToolPolicy{"full": {Version: "v1", Profile: "read", Capabilities: map[string]string{"demo": "allow"}}},
 		CloudflareAccess: &CloudflareAccessConfig{
@@ -131,15 +161,15 @@ func TestCallLimitValidation(t *testing.T) {
 		{RequestsPerMinute: -1, Burst: 1},
 		{RequestsPerMinute: 1, Burst: 1, Concurrency: -1},
 	} {
-		cfg := Config{Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {}}, Clients: map[string]Client{
-			"alice": {TokenEnv: "TOKEN", Profile: "read", Limits: limits},
+		cfg := Config{Transport: "http", Profile: "read", ToolPolicy: "read", Profiles: map[string][]string{"read": {}}, ToolPolicies: map[string]ToolPolicy{"read": {Version: "v1", Profile: "read"}}, EgressPolicy: &EgressPolicy{}, Clients: map[string]Client{
+			"alice": {TokenEnv: "TOKEN", Profile: "read", ToolPolicy: "read", Limits: limits},
 		}}
 		if cfg.Validate() == nil {
 			t.Fatalf("invalid limits accepted: %+v", limits)
 		}
 	}
 	valid := Config{
-		Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {"demo"}},
+		Transport: "http", Profile: "read", ToolPolicy: "pilot", Profiles: map[string][]string{"read": {"demo"}}, EgressPolicy: &EgressPolicy{},
 		ToolPolicies: map[string]ToolPolicy{"pilot": {Version: "v1", Profile: "read", Tools: map[string]string{"demo_read": "allow"}, ToolLimits: map[string]CallLimits{"demo_read": {RequestsPerMinute: 60, Burst: 2, Concurrency: 1}}}},
 		Clients:      map[string]Client{"alice": {TokenEnv: "TOKEN", Profile: "read", ToolPolicy: "pilot", Limits: &CallLimits{RequestsPerMinute: 120, Burst: 4, Concurrency: 2}}},
 	}
@@ -150,7 +180,7 @@ func TestCallLimitValidation(t *testing.T) {
 
 func TestOAuthConfigurationValidation(t *testing.T) {
 	valid := Config{
-		Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {"demo"}},
+		Transport: "http", Profile: "read", ToolPolicy: "pilot", Profiles: map[string][]string{"read": {"demo"}}, EgressPolicy: &EgressPolicy{},
 		ToolPolicies: map[string]ToolPolicy{"pilot": {Version: "v1", Profile: "read", Tools: map[string]string{"demo_read": "allow"}}},
 		OAuth: &OAuthConfig{
 			Issuer: "https://id.example.com", Resource: "https://switchboard.example.com/mcp/sessions",
@@ -227,7 +257,7 @@ func TestOAuthConfigurationValidation(t *testing.T) {
 
 func TestComposedIdentityPolicyValidation(t *testing.T) {
 	valid := Config{
-		Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"demo"}},
+		Transport: "http", Profile: "all", ToolPolicy: "read", Profiles: map[string][]string{"all": {"demo"}}, EgressPolicy: &EgressPolicy{},
 		ToolPolicies: map[string]ToolPolicy{
 			"read":  {Version: "read-v1", Profile: "all", Tools: map[string]string{"demo_status": "allow"}},
 			"write": {Version: "write-v1", Profile: "all", Tools: map[string]string{"demo_update": "allow"}},

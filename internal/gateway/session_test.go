@@ -33,7 +33,10 @@ func TestSessionPermissions(t *testing.T) {
 		{config.Client{Activate: true}, 0},
 		{config.Client{Discover: true, Execute: true, Activate: true, InitialCapabilities: []string{}}, 5},
 	} {
-		server, err := gateway.NewSession("test", "test", "identity", tc.policy, config.ToolPolicy{}, nil, nil, []capability.Capability{item})
+		tc.policy.Profile = "read"
+		tc.policy.ToolPolicy = "test"
+		toolPolicy := config.ToolPolicy{Version: "test", Profile: "read", Capabilities: map[string]string{"demo": "allow"}}
+		server, err := gateway.NewSession("test", "test", "identity", tc.policy, toolPolicy, nil, nil, []capability.Capability{item})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +60,8 @@ func TestSessionAuditsNativeToolWithoutPayloads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := gateway.NewSession("test", "session-1", "alice", config.Client{Profile: "read", Execute: true, IdentityPolicy: "oauth:readers", IdentityPolicyVersion: "pilot-v1", IdentityPolicyComponents: []string{"fleet-readers"}}, config.ToolPolicy{}, nil, nil, []capability.Capability{item})
+	toolPolicy := config.ToolPolicy{Version: "pilot-v1", Profile: "read", Tools: map[string]string{"demo_read": "allow"}}
+	server, err := gateway.NewSession("test", "session-1", "alice", config.Client{Profile: "read", Execute: true, ToolPolicy: "pilot", IdentityPolicy: "oauth:readers", IdentityPolicyVersion: "pilot-v1", IdentityPolicyComponents: []string{"fleet-readers"}}, toolPolicy, nil, nil, []capability.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +75,7 @@ func TestSessionAuditsNativeToolWithoutPayloads(t *testing.T) {
 		t.Fatalf("native tool call failed: %v %+v", err, result)
 	}
 	audit := logs.String()
-	for _, field := range []string{`"msg":"tool_invocation"`, `"identity":"alice"`, `"profile":"read"`, `"identity_policy":"oauth:readers"`, `"identity_policy_version":"pilot-v1"`, `"identity_policy_components":["fleet-readers"]`, `"session_id":"session-1"`, `"capability":"demo"`, `"tool":"demo_read"`, `"decision":"allowed_by_profile"`, `"outcome":"success"`, `"correlation_id":`} {
+	for _, field := range []string{`"msg":"tool_invocation"`, `"identity":"alice"`, `"profile":"read"`, `"identity_policy":"oauth:readers"`, `"identity_policy_version":"pilot-v1"`, `"identity_policy_components":["fleet-readers"]`, `"session_id":"session-1"`, `"capability":"demo"`, `"tool":"demo_read"`, `"decision":"allow"`, `"outcome":"success"`, `"correlation_id":`} {
 		if !strings.Contains(audit, field) {
 			t.Fatalf("missing audit field %s: %s", field, audit)
 		}
@@ -225,9 +229,10 @@ func TestSessionAuditsAndBlocksIdentityRateLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := config.Client{Profile: "read", Execute: true, Limits: &config.CallLimits{RequestsPerMinute: 1, Burst: 1}}
-	controller := gateway.NewCallController(client, config.ToolPolicy{})
-	server, err := gateway.NewSession("test", "session-1", "alice", client, config.ToolPolicy{}, controller, nil, []capability.Capability{item})
+	client := config.Client{Profile: "read", ToolPolicy: "test", Execute: true, Limits: &config.CallLimits{RequestsPerMinute: 1, Burst: 1}}
+	toolPolicy := config.ToolPolicy{Version: "test", Profile: "read", Tools: map[string]string{"demo_read": "allow"}}
+	controller := gateway.NewCallController(client, toolPolicy)
+	server, err := gateway.NewSession("test", "session-1", "alice", client, toolPolicy, controller, nil, []capability.Capability{item})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/kilo666mj/mcpkit/mcpkittest"
+	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/loader"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -29,7 +30,7 @@ func TestCatalogProfileRedactionAndSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := gateway.New("test", "restricted", items)
+	server, err := gateway.New("test", "restricted", "test", config.ToolPolicy{Version: "test", Profile: "restricted", Capabilities: map[string]string{"dns": "allow"}}, items)
 	if err != nil {
 		t.Fatal(err)
 	}
