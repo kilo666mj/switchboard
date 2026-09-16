@@ -605,6 +605,32 @@ can enable a capability and use `capability_execute` for read-only calls.
 
 ## Deployment
 
+### Container
+
+Release images are published for Linux amd64 and arm64 at
+`ghcr.io/kilo666mj/switchboard`. They run as numeric user `65532:65532` from a
+minimal scratch filesystem and include the gateway, optional Log Watcher module,
+CA roots, project license, third-party notices, and dependency inventory.
+
+Set `listen` to `0.0.0.0:8090` in the mounted configuration, then run:
+
+```sh
+docker run --rm --read-only --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --publish 127.0.0.1:8090:8090 \
+  --env-file /path/to/switchboard.env \
+  --mount type=bind,src=/path/to/switchboard.json,dst=/etc/switchboard/switchboard.json,readonly \
+  --mount type=bind,src=/path/to/capabilities,dst=/etc/switchboard/capabilities,readonly \
+  ghcr.io/kilo666mj/switchboard:0.1
+```
+
+Protect the environment file and do not bake credentials or populated manifests
+into derivative images. Pin production deployments to the release digest shown
+in the GitHub release notes. The `latest` tag follows the newest semantic-version
+release; `main` is a development image and is not a release channel.
+
+### Ansible
+
 The `ansible/` playbook builds Switchboard, installs the selected capability
 manifests and a hardened systemd service, and verifies readiness. Log Watcher is
 optional: set `switchboard_enable_log_watcher: true` only when its URL, token,

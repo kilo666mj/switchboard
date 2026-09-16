@@ -1,6 +1,21 @@
 # Review archives
 
-Build review archives from the exact audited source candidate with Go 1.26 or
+Published semantic-version releases also have a multi-architecture OCI image at
+`ghcr.io/kilo666mj/switchboard`. Release tags publish immutable amd64 and arm64
+manifests, build-provenance attestations, and an SBOM; the release notes record the
+manifest-list digest for pinning. Version tags such as `0.1.1` and the moving
+minor tag `0.1` are published, while `latest` follows the newest semantic-version
+release. Branch images use `main` and `sha-*` tags and are not releases.
+
+The runtime image is scratch-based and non-root. It contains the gateway, the
+optional Log Watcher module, CA roots, the project license, collected third-party
+notices, and the compiled dependency inventory. Configuration, capability
+manifests, and credentials are never included; mount or inject them at runtime.
+The container workflow first starts a native image with its network disabled,
+root filesystem read-only, all capabilities dropped, and `no-new-privileges`
+before any multi-architecture image is published.
+
+Build review archives from the exact audited source candidate with Go 1.27.1 or
 newer and Python 3. These commands only create local files; they do not upload,
 tag, push or change repository visibility.
 

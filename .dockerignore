@@ -1,0 +1,16 @@
+*
+!go.mod
+!go.sum
+!LICENSE
+!cmd/
+!cmd/switchboard/
+!cmd/switchboard/**
+!internal/
+!internal/**
+!modules/
+!modules/log_watcher/
+!modules/log_watcher/**
+!scripts/
+!scripts/release_notices.py
+!scripts/source_comments.py
+!scripts/source-notices.go

@@ -25,7 +25,7 @@ application's native plan, confirmation, revision, and rollback workflow.
 
 ## Quick start
 
-Requirements: Go 1.26 or newer.
+Requirements: Go 1.27.1 or newer.
 
 ```sh
 cp switchboard.example.json switchboard.json
@@ -39,6 +39,13 @@ go run ./cmd/switchboard -config switchboard.json
 
 Connect an MCP client to `http://127.0.0.1:8090/mcp`. Health endpoints are
 available at `/healthz`, `/readyz`, and `/metrics`.
+
+The multi-architecture container image is published at
+`ghcr.io/kilo666mj/switchboard`. Mount the configuration and capability
+manifests read-only, pass secrets through a protected environment file, and set
+the container configuration to listen on `0.0.0.0:8090`. Bind the published
+port to loopback unless a trusted reverse proxy provides the external boundary.
+See the [operator guide](docs/operator-guide.md#container) for an example.
 
 Example profile:
 
