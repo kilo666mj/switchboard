@@ -45,12 +45,12 @@ func TestModuleEgressPolicy(t *testing.T) {
 	if _, err := moduleEgressPolicy(); err == nil {
 		t.Fatal("missing module egress policy was accepted")
 	}
-	t.Setenv("SWITCHBOARD_MODULE_EGRESS_POLICY", `{"allowed_destinations":["api.example.internal:443"],"allowed_cidrs":["192.0.2.0/24"]}`)
+	t.Setenv("SWITCHBOARD_MODULE_EGRESS_POLICY", `{"allowed_destinations":["api.example.com:443"],"allowed_cidrs":["192.0.2.0/24"]}`)
 	policy, err := moduleEgressPolicy()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.ValidateURL("https://api.example.internal/v1"); err != nil {
+	if err := policy.ValidateURL("https://api.example.com/v1"); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("SWITCHBOARD_MODULE_EGRESS_POLICY", `{"unknown":true}`)

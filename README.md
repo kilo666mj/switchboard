@@ -23,6 +23,22 @@ Switchboard is the composition layer, not a replacement for upstream safety.
 A DNS change, publication, or destructive operation still uses the upstream
 application's native plan, confirmation, revision, and rollback workflow.
 
+## Place in the agent tooling stack
+
+Switchboard is the front door when one agent needs a curated set of tools. It
+can expose [Wayminder](https://github.com/kilo666mj/wayminder) for durable
+cross-session knowledge and [Rendercase](https://github.com/kilo666mj/rendercase)
+for immutable, reviewable web artifacts, alongside other independently secured
+applications. Those services remain authoritative for their own data,
+authorization, and audit records; Switchboard only authenticates the caller,
+selects the permitted tools, and forwards calls through a bounded connection.
+
+Use the services directly when a client needs only one of them. Use Switchboard
+when a single identity-aware endpoint, exact-tool policy, discovery, or bounded
+egress materially simplifies the client. Do not use Wayminder as an artifact
+store, Rendercase as durable agent memory, or Switchboard as a second database
+for either service.
+
 ## Quick start
 
 Requirements: Go 1.27.1 or newer.
@@ -31,7 +47,7 @@ Requirements: Go 1.27.1 or newer.
 cp switchboard.example.json switchboard.json
 cp capabilities/rilldns.example.json capabilities/rilldns.json
 
-export RILLDNS_MCP_URL=https://rilldns.example.internal/mcp
+export RILLDNS_MCP_URL=https://rilldns.example.com/mcp
 export RILLDNS_MCP_TOKEN=replace-me
 
 go run ./cmd/switchboard -config switchboard.json
@@ -133,6 +149,8 @@ Review the examples before exposing Switchboard outside a trusted network.
 - [Workplace adoption](docs/workplace-adoption.md) — staged rollout guidance
 - [Unattended agents](docs/unattended-agents.md) — workload identities,
   network containment, limits, and audit collection
+- [Troubleshooting and recovery](docs/troubleshooting.md) — startup, identity,
+  policy, upstream, and session diagnostics
 - [Release archives](docs/releases.md) and
   [privacy gate](docs/privacy-release.md) — reproducible public release process
 

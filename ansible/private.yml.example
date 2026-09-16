@@ -1,37 +1,37 @@
 # Copy to private.yml (ignored), use deployment-specific URLs, and source all
 # credential values from your secret manager. Never commit the populated file.
-switchboard_public_origin: https://switchboard.example.internal
+switchboard_public_origin: https://switchboard.example.com
 # Leave empty once all clients use the identity-bound /mcp/sessions endpoint.
 # During migration, set a legacy /mcp bearer credential of at least 32 bytes.
 switchboard_bearer_token: ""
 
 switchboard_oauth_token_url: https://id.example.com/api/oidc/token
 
-fleetglass_mcp_url: https://fleetglass.example.internal/mcp
+fleetglass_mcp_url: https://fleetglass.example.com/mcp
 fleetglass_mcp_token: replace-me
-forgejo_mcp_url: https://forgejo-mcp.example.internal/mcp
+forgejo_mcp_url: https://forgejo-mcp.example.com/mcp
 forgejo_mcp_token: "{{ lookup('ansible.builtin.env', 'FORGEJO_MCP_TOKEN') }}"
 # Optional local module. When enabled, also add `log_watcher: allow` to the
 # selected tool policy and its HTTPS destination to the egress policy.
 switchboard_enable_log_watcher: false
-# log_watcher_api_url: https://log-watcher-vip.example.internal
+# log_watcher_api_url: https://log-watcher-vip.example.com
 # log_watcher_api_token: "{{ lookup('ansible.builtin.env', 'LOG_WATCHER_API_TOKEN') }}"
-parallaxd_mcp_url: https://status.example.internal/mcp
+parallaxd_mcp_url: https://status.example.com/mcp
 parallaxd_mcp_token: replace-me
-rendercase_mcp_url: https://rendercase.example.internal/mcp
+rendercase_mcp_url: https://rendercase.example.com/mcp
 rendercase_mcp_host: rendercase.example.com
 rendercase_oauth_client_id: switchboard
 rendercase_oauth_client_secret: "{{ lookup('ansible.builtin.ini', 'SWITCHBOARD_OIDC_CLIENT_SECRET type=properties file=' + playbook_dir + '/oauth.env') }}"
-rendercase_oauth_resource: https://rendercase.example.internal/mcp
-rilldns_mcp_url: https://dns.example.internal/mcp
+rendercase_oauth_resource: https://rendercase.example.com/mcp
+rilldns_mcp_url: https://dns.example.com/mcp
 rilldns_mcp_token: replace-me
-tintwire_mcp_url: https://tintwire.example.internal/mcp
+tintwire_mcp_url: https://tintwire.example.com/mcp
 tintwire_oauth_client_id: switchboard
 tintwire_oauth_client_secret: "{{ lookup('ansible.builtin.ini', 'SWITCHBOARD_OIDC_CLIENT_SECRET type=properties file=' + playbook_dir + '/oauth.env') }}"
-tintwire_oauth_resource: https://tintwire.example.internal/mcp
-wayminder_mcp_url: https://wayminder.example.internal/mcp
+tintwire_oauth_resource: https://tintwire.example.com/mcp
+wayminder_mcp_url: https://wayminder.example.com/mcp
 wayminder_mcp_token: replace-me
-taskboard_mcp_url: https://taskboard.example.internal/mcp
+taskboard_mcp_url: https://taskboard.example.com/mcp
 taskboard_mcp_token: replace-me
 
 # Optional per-installation clients at /mcp/sessions. Use a different random token
@@ -54,15 +54,15 @@ switchboard_tool_policies:
       wayminder: allow
 switchboard_egress_policy:
   allowed_destinations:
-    - dns.example.internal:443
-    - fleetglass.example.internal:443
-    - forgejo-mcp.example.internal:443
+    - dns.example.com:443
+    - fleetglass.example.com:443
+    - forgejo-mcp.example.com:443
     - id.example.com:443
-    - rendercase.example.internal:443
-    - status.example.internal:443
-    - taskboard.example.internal:443
-    - tintwire.example.internal:443
-    - wayminder.example.internal:443
+    - rendercase.example.com:443
+    - status.example.com:443
+    - taskboard.example.com:443
+    - tintwire.example.com:443
+    - wayminder.example.com:443
   allowed_cidrs:
     - 192.0.2.0/24
 switchboard_inbound_oauth: null
@@ -105,7 +105,7 @@ switchboard_update_taskboard_credentials: false
 
 # Prometheus integration used by monitoring.yml. The target must resolve from
 # the monitoring host. Keep TLS verification enabled with a valid internal CA.
-# switchboard_metrics_target: switchboard.example.internal
+# switchboard_metrics_target: switchboard.example.com
 # switchboard_metrics_scheme: https
 # switchboard_metrics_tls_insecure_skip_verify: false
 # switchboard_prometheus_container: prometheus
@@ -115,7 +115,7 @@ switchboard_update_taskboard_credentials: false
 # disabled by default when this block is present.
 # switchboard_inbound_oauth:
 #   issuer: https://id.example.com
-#   resource: https://switchboard.example.internal/mcp/sessions
+#   resource: https://switchboard.example.com/mcp/sessions
 #   required_scopes:
 #     - openid # required when group_source is userinfo
 #     - mcp:connect

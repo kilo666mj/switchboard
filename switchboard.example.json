@@ -14,7 +14,7 @@
     }
   },
   "egress_policy": {
-    "allowed_destinations": ["rilldns.example.internal:443"],
+    "allowed_destinations": ["rilldns.example.com:443"],
     "allowed_cidrs": ["192.0.2.0/24"]
   },
   "profiles": {

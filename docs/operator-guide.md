@@ -46,7 +46,7 @@ Copy the examples without committing local credentials or URLs:
 ```sh
 cp switchboard.example.json switchboard.json
 cp capabilities/rilldns.example.json capabilities/rilldns.json
-export RILLDNS_MCP_URL=https://rilldns.example.internal/mcp
+export RILLDNS_MCP_URL=https://rilldns.example.com/mcp
 export RILLDNS_MCP_TOKEN=replace-me
 go run ./cmd/switchboard -config switchboard.json
 ```
@@ -166,8 +166,8 @@ The mandatory top-level `egress_policy` creates a fail-closed outbound boundary:
 {
   "egress_policy": {
     "allowed_destinations": [
-      "inventory.example.internal:443",
-      "id.example.internal:443"
+      "inventory.example.com:443",
+      "id.example.com:443"
     ],
     "allowed_cidrs": ["192.0.2.0/24"]
   }
@@ -582,7 +582,7 @@ OAuth configuration with the bootstrap's bearer-token environment variable.
 The helper can also be run directly:
 
 ```sh
-python3 scripts/switchboard-connect.py --url https://switchboard.example.internal/mcp/sessions --check
+python3 scripts/switchboard-connect.py --url https://switchboard.example.com/mcp/sessions --check
 ```
 
 Remove `--check` to apply. Use `--client claude`, `--client opencode`, or

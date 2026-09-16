@@ -14,7 +14,7 @@ discovery, credentials, policy, lifecycle, and routing.
 Switchboard is already that bootstrap endpoint:
 
 ```text
-agent client -> https://switchboard.example.internal/mcp -> configured capabilities
+agent client -> https://switchboard.example.com/mcp -> configured capabilities
 ```
 
 The desired end state is to register only Switchboard in each client, then let
