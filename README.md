@@ -71,6 +71,11 @@ static bearer credential. The stateful `/mcp/sessions` endpoint supports unique
 static clients, OAuth/OIDC resource-server authentication, and Cloudflare
 Access assertions from a trusted ingress.
 
+When workload identities must coexist with OAuth or Cloudflare Access, use the
+provider's `static_client_allowlist` to enable only named entries from
+`clients`. It is mutually exclusive with the global `allow_static_clients`
+migration switch.
+
 OAuth and Cloudflare identities map verified subjects and groups to profiles
 and exact tool policies. Cloudflare Access is optional and is not enabled by
 default. Its origin must reject bypass traffic, and the trusted proxy must strip

@@ -408,12 +408,17 @@ func TestOAuthSessionsBindSubjectAndMappedPolicy(t *testing.T) {
 
 func TestOAuthSessionBindsSubjectOnlyForOAuthClient(t *testing.T) {
 	staticToken := strings.Repeat("s", 32)
+	disabledToken := strings.Repeat("d", 32)
 	t.Setenv("STATIC_TOKEN", staticToken)
+	t.Setenv("DISABLED_TOKEN", disabledToken)
 	cfg := config.Config{
 		Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"subject"}},
-		Clients: map[string]config.Client{"static": {TokenEnv: "STATIC_TOKEN", Profile: "all", Execute: true}},
+		Clients: map[string]config.Client{
+			"static":   {TokenEnv: "STATIC_TOKEN", Profile: "all", Execute: true},
+			"disabled": {TokenEnv: "DISABLED_TOKEN", Profile: "all", Execute: true},
+		},
 		OAuth: &config.OAuthConfig{
-			Issuer: "https://id.example.com", Resource: "https://switchboard.example.com/mcp/sessions", RequiredScopes: []string{"mcp:connect"}, AllowStaticClients: true,
+			Issuer: "https://id.example.com", Resource: "https://switchboard.example.com/mcp/sessions", RequiredScopes: []string{"mcp:connect"}, StaticClientAllowlist: []string{"static"},
 			Policies: map[string]config.OAuthPolicy{"readers": {Version: "pilot-v1", Subjects: []string{"subject-alice"}, Profile: "all", Execute: true}},
 		},
 	}
@@ -439,6 +444,10 @@ func TestOAuthSessionBindsSubjectOnlyForOAuthClient(t *testing.T) {
 	status, staticID, body := request(t, api, http.MethodPost, staticToken, "", initialize)
 	if status != http.StatusOK || staticID == "" {
 		t.Fatalf("static initialize: %d %s", status, body)
+	}
+	status, _, _ = request(t, api, http.MethodPost, disabledToken, "", initialize)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("non-allowlisted static token status: %d", status)
 	}
 	status, _, body = request(t, api, http.MethodPost, staticToken, staticID, `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"subject_current","arguments":{}}}`)
 	if status != http.StatusOK || !strings.Contains(body, `"subject":""`) {

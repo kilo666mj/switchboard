@@ -115,9 +115,8 @@ func NewWithAuthUnavailable(ctx context.Context, version string, cfg config.Conf
 		h.idle = 30 * time.Minute
 	}
 	seen := map[[32]byte]bool{}
-	staticEnabled := cfg.StaticClientsEnabled()
 	for name, policy := range cfg.Clients {
-		if !staticEnabled {
+		if !cfg.StaticClientEnabled(name) {
 			continue
 		}
 		token := os.Getenv(policy.TokenEnv)

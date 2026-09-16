@@ -65,6 +65,7 @@ func TestToolPolicyValidation(t *testing.T) {
 func TestCloudflareAccessConfigurationValidation(t *testing.T) {
 	valid := Config{
 		Transport: "http", Profile: "read", Profiles: map[string][]string{"read": {"demo"}},
+		Clients:      map[string]Client{"work": {TokenEnv: "WORK_TOKEN", Profile: "read", ToolPolicy: "full"}},
 		ToolPolicies: map[string]ToolPolicy{"full": {Version: "v1", Profile: "read", Capabilities: map[string]string{"demo": "allow"}}},
 		CloudflareAccess: &CloudflareAccessConfig{
 			TeamDomain: "https://example.cloudflareaccess.com", Audience: "access-audience",
@@ -74,13 +75,28 @@ func TestCloudflareAccessConfigurationValidation(t *testing.T) {
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if valid.StaticClientsEnabled() {
+	if valid.AnyStaticClientsEnabled() {
 		t.Fatal("static clients enabled by default with Cloudflare Access")
 	}
 	valid.CloudflareAccess.AllowStaticClients = true
-	if !valid.StaticClientsEnabled() {
+	if !valid.AnyStaticClientsEnabled() {
 		t.Fatal("explicit Cloudflare Access migration switch ignored")
 	}
+	valid.CloudflareAccess.AllowStaticClients = false
+	valid.CloudflareAccess.StaticClientAllowlist = []string{"work"}
+	if !valid.StaticClientEnabled("work") {
+		t.Fatal("allowlisted static client was disabled")
+	}
+	valid.CloudflareAccess.StaticClientAllowlist = []string{"missing"}
+	if err := valid.Validate(); err == nil {
+		t.Fatal("unknown allowlisted static client was accepted")
+	}
+	valid.CloudflareAccess.StaticClientAllowlist = []string{"work"}
+	valid.CloudflareAccess.AllowStaticClients = true
+	if err := valid.Validate(); err == nil {
+		t.Fatal("global and allowlisted static clients were accepted together")
+	}
+	valid.CloudflareAccess.AllowStaticClients = false
 	for name, mutate := range map[string]func(*Config){
 		"http-team-domain":    func(c *Config) { c.CloudflareAccess.TeamDomain = "http://example.cloudflareaccess.com" },
 		"missing-audience":    func(c *Config) { c.CloudflareAccess.Audience = "" },

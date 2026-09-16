@@ -25,6 +25,15 @@ class PrivacyAuditTest(unittest.TestCase):
         audit.inspect(examples, {"file": "fixture"}, findings)
         self.assertEqual(findings, [])
 
+    def test_public_automation_identities_are_allowed(self):
+        self.assertIn(
+            b"dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+            audit.ALLOWED_GIT_IDENTITIES,
+        )
+        findings = []
+        audit.inspect(b"Signed-off-by: dependabot[bot] <support@github.com>", {"file": "fixture"}, findings)
+        self.assertEqual(findings, [])
+
     def test_deleted_history_and_author_metadata_are_checked(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

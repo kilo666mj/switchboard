@@ -100,7 +100,8 @@ switchboard_update_taskboard_credentials: false
 #   group_source: access_token # use userinfo for Pocket ID group claims
 #   scope_claim: scope
 #   jwt_type: at+jwt
-#   allow_static_clients: true
+#   static_client_allowlist:
+#     - workload-agent
 #   policy_mode: exclusive # use composed for additive group entitlements
 #   policies:
 #     workplace-readers:
@@ -122,7 +123,8 @@ switchboard_update_taskboard_credentials: false
 # switchboard_cloudflare_access:
 #   team_domain: https://example.cloudflareaccess.com
 #   audience: replace-with-the-access-application-aud-tag
-#   allow_static_clients: true
+#   static_client_allowlist:
+#     - workload-agent
 #   policy_mode: exclusive # use composed for additive group entitlements
 #   policies:
 #     workplace-users:

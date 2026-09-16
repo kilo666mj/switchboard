@@ -212,6 +212,9 @@ func (c Config) Validate() error {
 		if err := validateIdentityPolicyMode("OAuth", c.OAuth.PolicyMode, c.OAuth.Policies); err != nil {
 			return err
 		}
+		if err := validateStaticClientSelection("OAuth", c.OAuth.AllowStaticClients, c.OAuth.StaticClientAllowlist, c.Clients); err != nil {
+			return err
+		}
 	}
 	if c.CloudflareAccess != nil {
 		if c.Transport != "http" {
@@ -236,6 +239,9 @@ func (c Config) Validate() error {
 			}
 		}
 		if err := validateIdentityPolicyMode("Cloudflare Access", c.CloudflareAccess.PolicyMode, c.CloudflareAccess.Policies); err != nil {
+			return err
+		}
+		if err := validateStaticClientSelection("Cloudflare Access", c.CloudflareAccess.AllowStaticClients, c.CloudflareAccess.StaticClientAllowlist, c.Clients); err != nil {
 			return err
 		}
 	}
@@ -263,19 +269,48 @@ func validateIdentityPolicyMode(provider, mode string, policies map[string]OAuth
 	return nil
 }
 
+func validateStaticClientSelection(provider string, allowAll bool, allowlist []string, clients map[string]Client) error {
+	if allowAll && len(allowlist) > 0 {
+		return fmt.Errorf("%s allow_static_clients and static_client_allowlist are mutually exclusive", provider)
+	}
+	seen := map[string]bool{}
+	for _, name := range allowlist {
+		if strings.TrimSpace(name) != name || name == "" {
+			return fmt.Errorf("%s static_client_allowlist contains an invalid client name", provider)
+		}
+		if seen[name] {
+			return fmt.Errorf("%s static_client_allowlist contains duplicate client %q", provider, name)
+		}
+		if _, ok := clients[name]; !ok {
+			return fmt.Errorf("%s static_client_allowlist references unknown client %q", provider, name)
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
 func validPolicyDecision(decision string) bool {
 	return decision == "allow" || decision == "deny" || decision == "require_approval"
 }
 
-func (c Config) StaticClientsEnabled() bool {
+func (c Config) StaticClientEnabled(name string) bool {
 	enabled := true
 	if c.OAuth != nil {
-		enabled = enabled && c.OAuth.AllowStaticClients
+		enabled = enabled && (c.OAuth.AllowStaticClients || contains(c.OAuth.StaticClientAllowlist, name))
 	}
 	if c.CloudflareAccess != nil {
-		enabled = enabled && c.CloudflareAccess.AllowStaticClients
+		enabled = enabled && (c.CloudflareAccess.AllowStaticClients || contains(c.CloudflareAccess.StaticClientAllowlist, name))
 	}
 	return enabled
+}
+
+func (c Config) AnyStaticClientsEnabled() bool {
+	for name := range c.Clients {
+		if c.StaticClientEnabled(name) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c Config) validateIdentityPolicy(provider, name string, policy OAuthPolicy, allowScopes bool) error {
@@ -464,18 +499,19 @@ type EgressPolicy struct {
 // OAuthConfig describes an external authorization server. Switchboard remains
 // the resource server and accepts only access tokens audience-bound to Resource.
 type OAuthConfig struct {
-	Issuer             string                 `json:"issuer"`
-	Resource           string                 `json:"resource"`
-	RequiredScopes     []string               `json:"required_scopes"`
-	GroupClaim         string                 `json:"group_claim,omitempty"`
-	GroupSource        string                 `json:"group_source,omitempty"`
-	ScopeClaim         string                 `json:"scope_claim,omitempty"`
-	JWTType            string                 `json:"jwt_type,omitempty"`
-	TokenTypeClaim     string                 `json:"token_type_claim,omitempty"`
-	TokenTypeValue     string                 `json:"token_type_value,omitempty"`
-	AllowStaticClients bool                   `json:"allow_static_clients,omitempty"`
-	PolicyMode         string                 `json:"policy_mode,omitempty"`
-	Policies           map[string]OAuthPolicy `json:"policies"`
+	Issuer                string                 `json:"issuer"`
+	Resource              string                 `json:"resource"`
+	RequiredScopes        []string               `json:"required_scopes"`
+	GroupClaim            string                 `json:"group_claim,omitempty"`
+	GroupSource           string                 `json:"group_source,omitempty"`
+	ScopeClaim            string                 `json:"scope_claim,omitempty"`
+	JWTType               string                 `json:"jwt_type,omitempty"`
+	TokenTypeClaim        string                 `json:"token_type_claim,omitempty"`
+	TokenTypeValue        string                 `json:"token_type_value,omitempty"`
+	AllowStaticClients    bool                   `json:"allow_static_clients,omitempty"`
+	StaticClientAllowlist []string               `json:"static_client_allowlist,omitempty"`
+	PolicyMode            string                 `json:"policy_mode,omitempty"`
+	Policies              map[string]OAuthPolicy `json:"policies"`
 }
 
 const (
@@ -487,11 +523,12 @@ const (
 // at a trusted ingress. It shares the same identity policies as OAuth, without
 // OAuth scopes because Access has already applied its edge policy.
 type CloudflareAccessConfig struct {
-	TeamDomain         string                 `json:"team_domain"`
-	Audience           string                 `json:"audience"`
-	AllowStaticClients bool                   `json:"allow_static_clients,omitempty"`
-	PolicyMode         string                 `json:"policy_mode,omitempty"`
-	Policies           map[string]OAuthPolicy `json:"policies"`
+	TeamDomain            string                 `json:"team_domain"`
+	Audience              string                 `json:"audience"`
+	AllowStaticClients    bool                   `json:"allow_static_clients,omitempty"`
+	StaticClientAllowlist []string               `json:"static_client_allowlist,omitempty"`
+	PolicyMode            string                 `json:"policy_mode,omitempty"`
+	Policies              map[string]OAuthPolicy `json:"policies"`
 }
 
 const (

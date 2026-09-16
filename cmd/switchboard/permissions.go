@@ -250,7 +250,7 @@ func buildPermissionReport(cfg config.Config) permissionReport {
 	sort.Strings(clientNames)
 	for _, name := range clientNames {
 		client := cfg.Clients[name]
-		report.Clients = append(report.Clients, permissionClientSummary{Name: name, Enabled: cfg.StaticClientsEnabled(), Profile: client.Profile, ToolPolicy: client.ToolPolicy, Discover: client.Discover, Execute: client.Execute, Activate: client.Activate})
+		report.Clients = append(report.Clients, permissionClientSummary{Name: name, Enabled: cfg.StaticClientEnabled(name), Profile: client.Profile, ToolPolicy: client.ToolPolicy, Discover: client.Discover, Execute: client.Execute, Activate: client.Activate})
 	}
 	return report
 }

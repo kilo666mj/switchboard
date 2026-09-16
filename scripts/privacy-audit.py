@@ -21,6 +21,16 @@ PATTERNS = {
 }
 EXAMPLE_DOMAINS = ("example.com", "example.net", "example.org", "example.internal", "example.test", "example.invalid")
 DOCUMENTATION_NETS = [ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
+ALLOWED_EMAILS = {
+    "49699333+dependabot[bot]@users.noreply.github.com",
+    "noreply@github.com",
+    "support@github.com",
+}
+ALLOWED_GIT_IDENTITIES = {
+    b"Project Contributors <release@example.invalid>",
+    b"dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+    b"GitHub <noreply@github.com>",
+}
 
 
 def git(repo, *args):
@@ -29,6 +39,8 @@ def git(repo, *args):
 
 def allowed(category, value):
     if category == "email-address":
+        if value.lower() in ALLOWED_EMAILS:
+            return True
         domain = value.rsplit("@", 1)[1].lower()
         return domain.endswith((".test", ".invalid", ".example")) or any(domain == d or domain.endswith("." + d) for d in EXAMPLE_DOMAINS)
     if category == "internal-hostname":
@@ -71,7 +83,7 @@ def audit(repo, history=True):
             if line.startswith((b"author ", b"committer ")):
                 # Even valid Git author names/emails are identifying information.
                 identity = line.split(b" ", 1)[1].rsplit(b">", 1)[0] + b">"
-                if identity != b"Project Contributors <release@example.invalid>":
+                if identity not in ALLOWED_GIT_IDENTITIES:
                     findings.append({"scope": "history", "commit": commit[:12], "category": "git-identity-metadata", "field": line.split(b" ", 1)[0].decode()})
         inspect(message, {"scope": "history", "commit": commit[:12], "file": "(commit message)"}, findings)
         for entry in git(repo, "ls-tree", "-rz", "--full-tree", commit).split(b"\0"):

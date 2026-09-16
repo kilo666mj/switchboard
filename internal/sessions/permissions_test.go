@@ -79,6 +79,24 @@ func TestInspectPermissionsExplainsMissingScopes(t *testing.T) {
 	}
 }
 
+func TestInspectPermissionsReportsPerClientStaticAllowlist(t *testing.T) {
+	cfg, items := permissionFixture(t)
+	cfg.Clients = map[string]config.Client{
+		"allowed":  {TokenEnv: "ALLOWED", Profile: "all", ToolPolicy: "read", Execute: true},
+		"disabled": {TokenEnv: "DISABLED", Profile: "all", ToolPolicy: "read", Execute: true},
+	}
+	cfg.OAuth.StaticClientAllowlist = []string{"allowed"}
+	for name, want := range map[string]string{"allowed": "allowed", "disabled": "disabled"} {
+		inspection, err := InspectPermissions(cfg, PermissionInspectionInput{Client: name}, items, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if inspection.Status != want {
+			t.Fatalf("client %q status = %q, want %q", name, inspection.Status, want)
+		}
+	}
+}
+
 func TestLintPermissionsHighlightsOperatorHazards(t *testing.T) {
 	cfg, _ := permissionFixture(t)
 	cfg.Profiles["duplicate"] = []string{"demo"}

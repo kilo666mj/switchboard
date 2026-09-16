@@ -348,7 +348,7 @@ resource server on `/mcp/sessions`:
     "group_source": "access_token",
     "scope_claim": "scope",
     "jwt_type": "at+jwt",
-    "allow_static_clients": true,
+    "static_client_allowlist": ["workload-agent"],
     "policies": {
       "workplace-readers": {
         "version": "pilot-v1",
@@ -406,9 +406,12 @@ URL in authentication challenges. MCP clients must request the same `resource`
 in authorization and token requests and send the access token—not an ID token—
 on every MCP request.
 
-`allow_static_clients` defaults to false whenever OAuth is configured. Set it
-temporarily to migrate existing entries in `clients`, then remove those entries
-or leave the switch disabled. The separate legacy `/mcp` endpoint remains
+`allow_static_clients` defaults to false whenever OAuth is configured. Prefer
+`static_client_allowlist` for long-lived workload identities that must coexist
+with OAuth; only the named entries in `clients` are enabled. The allowlist and
+global switch are mutually exclusive. Use the global switch only temporarily
+to migrate all existing clients, then remove those entries or leave the switch
+disabled. The separate legacy `/mcp` endpoint remains
 controlled by `SWITCHBOARD_BEARER_TOKEN`; unset that variable when migration is
 complete. OAuth issuer discovery and JWKS requests also obey `egress_policy`, so
 include every authorization-server destination they use.

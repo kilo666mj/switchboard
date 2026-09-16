@@ -96,7 +96,7 @@ func InspectPermissions(cfg config.Config, input PermissionInspectionInput, item
 		}
 		result.Provider = PermissionProviderStatic
 		result.MatchedPolicies = []string{"static:" + input.Client}
-		if !cfg.StaticClientsEnabled() {
+		if !cfg.StaticClientEnabled(input.Client) {
 			result.Status = "disabled"
 			return result, nil
 		}
@@ -310,8 +310,14 @@ func LintPermissions(cfg config.Config) []PermissionWarning {
 			profileSignatures[signature] = name
 		}
 	}
-	if len(cfg.Clients) > 0 && !cfg.StaticClientsEnabled() {
-		warnings = append(warnings, PermissionWarning{Code: "disabled_static_clients", Message: fmt.Sprintf("%d static clients are configured but disabled by the identity-provider migration switch", len(cfg.Clients))})
+	disabledStaticClients := 0
+	for name := range cfg.Clients {
+		if !cfg.StaticClientEnabled(name) {
+			disabledStaticClients++
+		}
+	}
+	if disabledStaticClients > 0 {
+		warnings = append(warnings, PermissionWarning{Code: "disabled_static_clients", Message: fmt.Sprintf("%d static clients are configured but disabled by identity-provider static-client controls", disabledStaticClients)})
 	}
 	referencedToolPolicies := map[string]bool{}
 	for _, client := range cfg.Clients {

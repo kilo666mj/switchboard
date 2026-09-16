@@ -55,8 +55,8 @@ func run() error {
 	for _, name := range selected {
 		seen[name] = true
 	}
-	if cfg.StaticClientsEnabled() {
-		for _, client := range cfg.Clients {
+	for clientName, client := range cfg.Clients {
+		if cfg.StaticClientEnabled(clientName) {
 			for _, name := range cfg.Profiles[client.Profile] {
 				if !seen[name] {
 					selected = append(selected, name)
