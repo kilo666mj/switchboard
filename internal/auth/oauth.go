@@ -31,6 +31,7 @@ const (
 var (
 	ErrMissingToken      = errors.New("OAuth access token is required")
 	ErrInvalidToken      = errors.New("invalid OAuth access token")
+	ErrUserInfo          = errors.New("OAuth UserInfo validation failed")
 	ErrInsufficientScope = errors.New("OAuth access token has insufficient scope")
 	ErrPolicyDenied      = errors.New("OAuth identity is not mapped to a policy")
 	ErrAmbiguousPolicy   = errors.New("OAuth identity maps to multiple policies")
@@ -319,39 +320,25 @@ func (a *Authenticator) Authenticate(r *http.Request) (Principal, error) {
 		userInfoSubject, resolved, resolveErr := a.groups.Resolve(r.Context(), parts[1])
 		if resolveErr != nil || userInfoSubject != verified.Subject || !safeIdentity(userInfoSubject) {
 			slog.InfoContext(r.Context(), "oauth_authorization", "identity", verified.Subject, "outcome", "userinfo_failed")
-			return Principal{}, ErrInvalidToken
+			return Principal{}, fmt.Errorf("%w: %w", ErrUserInfo, ErrInvalidToken)
 		}
 		groupClaim = resolved
 	}
 	groups, err := stringSetClaim(groupClaim, false)
 	if err != nil {
 		slog.InfoContext(r.Context(), "oauth_authorization", "identity", verified.Subject, "outcome", "invalid_claim")
+		if a.cfg.GroupSource == config.OAuthGroupSourceUserInfo {
+			return Principal{}, fmt.Errorf("%w: %w", ErrUserInfo, ErrInvalidToken)
+		}
 		return Principal{}, ErrInvalidToken
 	}
-	var matches []PolicyMatch
-	missingScopes := map[string]bool{}
-	for name, policy := range a.cfg.Policies {
-		if !matchesPolicy(verified.Subject, groups, policy) {
-			continue
-		}
-		if !containsAll(scopes, policy.RequiredScopes) {
-			for _, scope := range a.cfg.RequiredScopes {
-				missingScopes[scope] = true
-			}
-			for _, scope := range policy.RequiredScopes {
-				missingScopes[scope] = true
-			}
-			continue
-		}
-		matches = append(matches, PolicyMatch{Name: name, Policy: policy})
-	}
+	evaluation := EvaluatePolicies(verified.Subject, groups, scopes, a.cfg.Policies, true)
+	matches := evaluation.Matches
 	if len(matches) == 0 {
-		if len(missingScopes) > 0 {
-			required := make([]string, 0, len(missingScopes))
-			for scope := range missingScopes {
-				required = append(required, scope)
-			}
-			sort.Strings(required)
+		if len(evaluation.MissingScopes) > 0 {
+			required := append([]string{}, a.cfg.RequiredScopes...)
+			required = append(required, evaluation.MissingScopes...)
+			required = uniqueSorted(required)
 			slog.InfoContext(r.Context(), "oauth_authorization", "identity", verified.Subject, "outcome", "insufficient_scope")
 			return Principal{}, &ScopeError{Scopes: required}
 		}
@@ -368,6 +355,54 @@ func (a *Authenticator) Authenticate(r *http.Request) (Principal, error) {
 		Policy: matches[0].Policy.Client(), PolicyMatches: matches,
 		Composed: a.cfg.PolicyMode == config.IdentityPolicyModeComposed,
 	}, nil
+}
+
+// PolicyEvaluation is the provider-neutral result of matching verified identity
+// attributes against configured identity policies. It is shared by live
+// authentication and the read-only permission inspector so their answers stay
+// identical.
+type PolicyEvaluation struct {
+	Matches       []PolicyMatch
+	MissingScopes []string
+}
+
+// EvaluatePolicies applies exact subject, group, and optional OAuth scope
+// matching. Groups use any-match semantics, while a policy containing both
+// subjects and groups requires both dimensions to match.
+func EvaluatePolicies(subject string, groups, scopes map[string]bool, policies map[string]config.OAuthPolicy, enforceScopes bool) PolicyEvaluation {
+	result := PolicyEvaluation{}
+	missing := map[string]bool{}
+	for name, policy := range policies {
+		if !matchesPolicy(subject, groups, policy) {
+			continue
+		}
+		if enforceScopes && !containsAll(scopes, policy.RequiredScopes) {
+			for _, scope := range policy.RequiredScopes {
+				missing[scope] = true
+			}
+			continue
+		}
+		result.Matches = append(result.Matches, PolicyMatch{Name: name, Policy: policy})
+	}
+	sort.Slice(result.Matches, func(i, j int) bool { return result.Matches[i].Name < result.Matches[j].Name })
+	for scope := range missing {
+		result.MissingScopes = append(result.MissingScopes, scope)
+	}
+	sort.Strings(result.MissingScopes)
+	return result
+}
+
+func uniqueSorted(values []string) []string {
+	seen := map[string]bool{}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+	sort.Strings(result)
+	return result
 }
 
 func matchesPolicy(subject string, groups map[string]bool, policy config.OAuthPolicy) bool {
@@ -496,6 +531,13 @@ func (a *Authenticator) WriteError(w http.ResponseWriter, err error) {
 		challenge += ", error=" + strconv.Quote(code)
 	}
 	requiredScopes := a.cfg.RequiredScopes
+	if errors.Is(err, ErrMissingToken) {
+		// The caller is not authenticated yet, so Switchboard cannot know which
+		// group policy will apply. Advertise the union already published in the
+		// protected-resource metadata so clients that seed authorization from the
+		// initial challenge request the policy scopes they may need.
+		requiredScopes = allScopes(a.cfg)
+	}
 	var scopeError *ScopeError
 	if errors.As(err, &scopeError) {
 		requiredScopes = scopeError.Scopes

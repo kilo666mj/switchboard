@@ -8,6 +8,7 @@
   "description": "Create and manage hosted HTML artifacts.",
   "endpoint_env": "RENDERCASE_MCP_URL",
   "host_env": "RENDERCASE_MCP_HOST",
+  "forward_oauth_subject": true,
   "oauth_client_credentials": {
     "token_url_env": "SWITCHBOARD_OAUTH_TOKEN_URL",
     "client_id_env": "RENDERCASE_OAUTH_CLIENT_ID",

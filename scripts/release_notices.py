@@ -38,11 +38,12 @@ def notice_files(root):
 
 
 def collect(root, env, package='./cmd/switchboard', go_notices=None):
-    raw = subprocess.check_output(['go', 'list', '-mod=readonly', '-deps', '-json', package],
+    packages = [package] if isinstance(package, str) else list(package)
+    raw = subprocess.check_output(['go', 'list', '-mod=readonly', '-buildvcs=false', '-deps', '-json', *packages],
                                   cwd=root, env=env, text=True)
     modules = {}
-    packages = list(json_stream(raw))
-    for package_info in packages:
+    package_graph = list(json_stream(raw))
+    for package_info in package_graph:
         module = package_info.get('Module')
         if module and not module.get('Main'):
             if module.get('Replace'):
@@ -55,7 +56,7 @@ def collect(root, env, package='./cmd/switchboard', go_notices=None):
     # even when their root LICENSE covers the surrounding project. Use Go's
     # lexer so strings containing comment-like text are never treated as notices.
     inputs, assembly_inputs = [], []
-    for info in packages:
+    for info in package_graph:
         if 'Dir' not in info:
             continue
         directory = Path(info['Dir'])
@@ -78,7 +79,7 @@ def collect(root, env, package='./cmd/switchboard', go_notices=None):
     inputs.sort(key=lambda item: (item['component'], item['file']))
     host_env = dict(env, GOOS=toolchain['GOHOSTOS'], GOARCH=toolchain['GOHOSTARCH'])
     source_notices = json.loads(subprocess.check_output(
-        ['go', 'run', '-mod=readonly', str(Path(root) / 'scripts/source-notices.go')],
+        ['go', 'run', '-mod=readonly', '-buildvcs=false', str(Path(root) / 'scripts/source-notices.go')],
         input=json.dumps(inputs), cwd=root, env=host_env, text=True))
     license_root = Path(go_notices) if go_notices else goroot
     files = [('LICENSE', (license_root / 'LICENSE').read_bytes())]

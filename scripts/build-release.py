@@ -34,11 +34,17 @@ def main():
         for target in targets:
             system, arch = target.split('/')
             binary = Path(temporary) / 'switchboard'
+            log_watcher_module = Path(temporary) / 'switchboard-module-log-watcher'
             env = dict(os.environ, GOOS=system, GOARCH=arch, CGO_ENABLED='0', GOWORK='off', GOFLAGS='')
             subprocess.run(['go', 'build', '-mod=readonly', '-trimpath', '-buildvcs=false',
                             '-ldflags=-s -w -X main.version=' + args.version,
                             '-o', str(binary), './cmd/switchboard'], cwd=ROOT, env=env, check=True)
-            notices, dependencies = collect(ROOT, env, go_notices=args.go_notices)
+            subprocess.run(['go', 'build', '-mod=readonly', '-trimpath', '-buildvcs=false',
+                            '-ldflags=-s -w -X main.version=' + args.version,
+                            '-o', str(log_watcher_module), './modules/log_watcher'], cwd=ROOT, env=env, check=True)
+            notices, dependencies = collect(ROOT, env,
+                                            package=['./cmd/switchboard', './modules/log_watcher'],
+                                            go_notices=args.go_notices)
             notice_path, dependency_path = Path(temporary) / 'THIRD_PARTY_NOTICES.txt', Path(temporary) / 'DEPENDENCIES.json'
             notice_path.write_bytes(notices)
             dependency_path.write_bytes(dependencies)
@@ -49,7 +55,7 @@ def main():
             with archive.open('wb') as raw:
                 with gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=0) as compressed:
                     with tarfile.open(fileobj=compressed, mode='w') as tar:
-                        for source, destination, mode in [(binary, 'switchboard', 0o755), (ROOT / 'README.md', 'README.md', 0o644), (ROOT / 'LICENSE', 'LICENSE', 0o644), (notice_path, notice_path.name, 0o644), (dependency_path, dependency_path.name, 0o644)]:
+                        for source, destination, mode in [(binary, 'switchboard', 0o755), (log_watcher_module, 'modules/switchboard-module-log-watcher', 0o755), (ROOT / 'README.md', 'README.md', 0o644), (ROOT / 'LICENSE', 'LICENSE', 0o644), (notice_path, notice_path.name, 0o644), (dependency_path, dependency_path.name, 0o644)]:
                             data = source.read_bytes()
                             entry = tarfile.TarInfo(name + '/' + destination)
                             entry.size, entry.mode, entry.mtime = len(data), mode, 0

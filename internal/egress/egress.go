@@ -17,6 +17,7 @@ import (
 type lookupFunc func(context.Context, string, string) ([]net.IP, error)
 
 type Policy struct {
+	config       config.EgressPolicy
 	destinations map[string]bool
 	prefixes     []netip.Prefix
 	lookup       lookupFunc
@@ -26,7 +27,7 @@ func New(cfg config.EgressPolicy) (*Policy, error) {
 	if len(cfg.AllowedDestinations) == 0 || len(cfg.AllowedCIDRs) == 0 {
 		return nil, fmt.Errorf("egress policy requires allowed_destinations and allowed_cidrs")
 	}
-	policy := &Policy{destinations: map[string]bool{}, lookup: net.DefaultResolver.LookupIP}
+	policy := &Policy{config: cfg, destinations: map[string]bool{}, lookup: net.DefaultResolver.LookupIP}
 	for _, raw := range cfg.AllowedDestinations {
 		destination, err := normalizeDestination(raw)
 		if err != nil {
@@ -45,6 +46,15 @@ func New(cfg config.EgressPolicy) (*Policy, error) {
 		policy.prefixes = append(policy.prefixes, prefix.Masked())
 	}
 	return policy, nil
+}
+
+// Configuration returns a copy suitable for passing to a reviewed local
+// module. The configuration contains network boundaries, never credentials.
+func (p *Policy) Configuration() config.EgressPolicy {
+	return config.EgressPolicy{
+		AllowedDestinations: append([]string(nil), p.config.AllowedDestinations...),
+		AllowedCIDRs:        append([]string(nil), p.config.AllowedCIDRs...),
+	}
 }
 
 func (p *Policy) ValidateURL(raw string) error {

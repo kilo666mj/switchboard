@@ -14,6 +14,8 @@ and arm64 tar archives plus `SHA256SUMS`. Use `--target linux/amd64` or
 `--target linux/arm64` to select a target. Each archive contains exactly:
 
 - `switchboard`: a static Go binary with the candidate version in MCP server info.
+- `modules/switchboard-module-log-watcher`: the static Log Watcher MCP module
+  with the same candidate version.
 - `README.md` and the project's MIT `LICENSE`.
 - `THIRD_PARTY_NOTICES.txt`: verbatim notices from the target's compiled module
   graph and Go toolchain, including nested notices conservatively.
@@ -22,10 +24,11 @@ and arm64 tar archives plus `SHA256SUMS`. Use `--target linux/amd64` or
 Builds omit VCS metadata and source paths, and use fixed archive timestamps and
 neutral owners. Compare independent builds made from the same source with the
 same toolchain. The smoke verifier checks archive hashes, exact entries,
-metadata, executable permissions and each notice against its recorded hash. It
-also starts the native binary using a temporary empty stdio profile, checks the
-embedded version via MCP initialization and retrieves its tool catalog. It
-inherits no gateway credentials and contacts no upstream service.
+metadata, both executable permissions and each notice against its recorded hash.
+It also starts the native gateway and module binaries, checks their embedded
+versions via MCP initialization, and retrieves both tool catalogs. The gateway
+uses a temporary empty stdio profile; the module receives a non-listening test
+URL and is not asked to call it. Neither contacts an upstream service.
 
 The smoke verifier needs an archive for its native Linux amd64 or arm64 host.
 Cross-compilation and archive inspection do not prove native arm64 execution.
@@ -43,8 +46,9 @@ Check obligations against the exact final artifacts. Upstream copyright and
 notice text must remain intact even when it contains attribution email addresses;
 review those separately from private contributor metadata and operational data.
 
-These archives contain the Go gateway only. They do not bundle the pi extension,
-its npm dependencies, deployment configuration, capabilities or operator state.
+These archives contain the Go gateway and its reviewed Log Watcher module. They
+do not bundle the pi extension, its npm dependencies, deployment configuration,
+capability manifests or operator state.
 The pi extension has a separate source review workflow below; licensing acceptance
 remains required before distribution.
 Follow the [privacy release gate](privacy-release.md) for all publication refs and

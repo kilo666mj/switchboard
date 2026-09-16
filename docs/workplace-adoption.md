@@ -219,11 +219,11 @@ JWT validation is local and does not introspect each request. Individual token
 revocation therefore relies on short access-token expiry unless the issuer
 removes the signing key.
 
-The remaining deployment work is to create the Switchboard API resource and
-permissions in the approved provider, verify supported MCP clients, review
-subject/group mappings, select token lifetimes, and disable both static-token
-migration paths. Pocket ID is a suitable first tested provider, but the gateway
-configuration and validation are not Pocket-ID-specific.
+The remaining rollout work is to assign and test the staged Rendercase and
+Tintwire groups, finish installed-client migration, restrict direct upstream
+routes, and disable both static-token migration paths. Pocket ID is the first
+tested provider, but the gateway configuration and validation are not
+Pocket-ID-specific.
 
 The MCP authorization specification requires audience-bound tokens and forbids
 passing an inbound MCP token through to another service. Switchboard's use of
@@ -236,9 +236,11 @@ Access-protected ingress. Switchboard validates the edge assertion's signature,
 issuer, audience, expiry, application-token type, stable subject, email, and
 groups before applying the same versioned gateway policies. OAuth and Access
 credentials on the same request are rejected. This does not turn a downstream
-service identity into delegated user identity: keep a direct connection for an
-upstream such as Rendercase when ownership must remain attached to the user's
-own upstream subject.
+service identity into delegated user identity by itself. For an upstream that
+explicitly trusts Switchboard's service-client subject, a reserved per-call
+header may carry the already-verified OAuth subject. The upstream must resolve
+that subject to an existing principal and retain all ownership and authorization
+checks. Switchboard never forwards its inbound audience-bound token downstream.
 
 ### 3. Select a downstream identity model
 
@@ -352,10 +354,14 @@ limits per authenticated identity, shared across all of its sessions, with
 optional stricter limits on exact tools. Rejections are audited and never reach
 the upstream. These process-local controls still require alerting and a
 distributed design before a multi-instance deployment can enforce global limits.
-The `/metrics` endpoint reports authentication and authorization failures,
-capacity pressure, active sessions, tool decisions, outcomes, counts, and
-duration without identity or payload labels. Production must protect and scrape
-it, then define alerts and retention in the organization's monitoring system.
+The `/metrics` endpoint reports authentication, UserInfo, and authorization
+failures; capacity pressure; active sessions; tool decisions, outcomes, counts,
+and duration; and a numeric effective-policy hash for each composed component
+set. It does not use identity or payload labels. Install
+[`monitoring/switchboard.rules.yml`](../monitoring/switchboard.rules.yml) to
+alert on repeated authentication failures, UserInfo failures, and changes to an
+existing component set's effective hash. Protect and scrape the endpoint, and
+set retention and notification routing in the organization's monitoring system.
 
 ### 9. Address model and MCP-specific threats
 

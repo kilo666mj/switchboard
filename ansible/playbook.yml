@@ -7,6 +7,7 @@
   vars:
     switchboard_build_dir: "{{ playbook_dir }}/.build"
     switchboard_binary: "{{ switchboard_build_dir }}/switchboard"
+    switchboard_log_watcher_module_binary: "{{ switchboard_build_dir }}/switchboard-module-log-watcher"
     switchboard_capabilities:
       - fleetglass
       - forgejo
@@ -23,7 +24,7 @@
       ansible.builtin.assert:
         that:
           - switchboard_public_origin | length > 0
-          - switchboard_bearer_token | length >= 32
+          - (switchboard_bearer_token | default('') | length == 0) or (switchboard_bearer_token | length >= 32)
           - switchboard_oauth_token_url | length > 0
           - fleetglass_mcp_url | length > 0
           - fleetglass_mcp_token | length >= 32
@@ -48,7 +49,7 @@
           - tintwire_oauth_resource | length > 0
           - wayminder_mcp_url | length > 0
           - wayminder_mcp_token | length >= 32
-          - "'placeholder' not in (switchboard_bearer_token | lower)"
+          - "'placeholder' not in (switchboard_bearer_token | default('') | lower)"
           - "'placeholder' not in (fleetglass_mcp_token | lower)"
           - "'placeholder' not in (forgejo_mcp_token | lower)"
           - "'placeholder' not in (log_watcher_api_token | lower)"
@@ -63,6 +64,12 @@
         fail_msg: Populate ansible/private.yml with deployment URLs and credentials.
       no_log: true
       when: not (switchboard_reuse_upstream_credentials | default(false) | bool)
+
+    - name: Validate the target architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+        fail_msg: "Unsupported Switchboard target architecture: {{ ansible_facts['architecture'] }}"
 
     - name: Inspect existing environment for an in-place credential-preserving upgrade
       ansible.builtin.stat:
@@ -96,9 +103,13 @@
 
     - name: Create local build directory
       ansible.builtin.file:
-        path: "{{ switchboard_build_dir }}"
+        path: "{{ item }}"
         state: directory
         mode: "0700"
+      loop:
+        - "{{ switchboard_build_dir }}"
+        - "{{ switchboard_build_dir }}/go-cache"
+        - "{{ switchboard_build_dir }}/go-tmp"
       delegate_to: localhost
       become: false
       run_once: true
@@ -115,7 +126,33 @@
           - ./cmd/switchboard
         chdir: "{{ playbook_dir }}/.."
       environment:
-        GOCACHE: /tmp/switchboard-ansible-go-cache
+        GOCACHE: "{{ switchboard_build_dir }}/go-cache"
+        GOTMPDIR: "{{ switchboard_build_dir }}/go-tmp"
+        CGO_ENABLED: "0"
+        GOOS: linux
+        GOARCH: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: true
+
+    - name: Build the Log Watcher module on the controller
+      ansible.builtin.command:
+        argv:
+          - go
+          - build
+          - -trimpath
+          - -ldflags=-s -w
+          - -o
+          - "{{ switchboard_log_watcher_module_binary }}"
+          - ./modules/log_watcher
+        chdir: "{{ playbook_dir }}/.."
+      environment:
+        GOCACHE: "{{ switchboard_build_dir }}/go-cache"
+        GOTMPDIR: "{{ switchboard_build_dir }}/go-tmp"
+        CGO_ENABLED: "0"
+        GOOS: linux
+        GOARCH: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
       delegate_to: localhost
       become: false
       run_once: true
@@ -149,6 +186,7 @@
         - {path: /etc/switchboard, mode: "0750"}
         - {path: /etc/switchboard/capabilities, mode: "0750"}
         - {path: /etc/switchboard/ssh, mode: "0750"}
+        - {path: /usr/local/libexec/switchboard, mode: "0755"}
 
     - name: Generate the restricted Parallaxd tunnel key
       ansible.builtin.command:
@@ -193,6 +231,7 @@
       ansible.builtin.command: cat /etc/ssh/ssh_host_ed25519_key.pub
       delegate_to: "{{ groups['parallaxd_tunnel'][0] }}"
       become: true
+      check_mode: false
       register: switchboard_parallaxd_host_key
       changed_when: false
 
@@ -237,6 +276,15 @@
       ansible.builtin.copy:
         src: "{{ switchboard_binary }}"
         dest: /usr/local/bin/switchboard
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart Switchboard
+
+    - name: Install the Log Watcher module
+      ansible.builtin.copy:
+        src: "{{ switchboard_log_watcher_module_binary }}"
+        dest: /usr/local/libexec/switchboard/switchboard-module-log-watcher
         owner: root
         group: root
         mode: "0755"
@@ -287,7 +335,21 @@
       no_log: true
       notify: Restart Switchboard
 
-    - name: Add Taskboard credentials during an in-place upgrade
+    - name: Remove the retired legacy bearer during an in-place upgrade
+      ansible.builtin.lineinfile:
+        path: /etc/switchboard/switchboard.env
+        regexp: '^SWITCHBOARD_BEARER_TOKEN='
+        state: absent
+        owner: root
+        group: switchboard
+        mode: "0640"
+      when:
+        - switchboard_reuse_upstream_credentials | default(false) | bool
+        - switchboard_bearer_token | default('') | length == 0
+      no_log: true
+      notify: Restart Switchboard
+
+    - name: Add or rotate Taskboard credentials during an in-place upgrade
       ansible.builtin.blockinfile:
         path: /etc/switchboard/switchboard.env
         marker: "# {mark} TASKBOARD CREDENTIALS"
@@ -297,7 +359,9 @@
         owner: root
         group: switchboard
         mode: "0640"
-      when: switchboard_reuse_upstream_credentials | default(false) | bool
+      when:
+        - switchboard_reuse_upstream_credentials | default(false) | bool
+        - switchboard_update_taskboard_credentials | default(false) | bool
       no_log: true
       notify: Restart Switchboard
 

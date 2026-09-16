@@ -1,7 +1,7 @@
 {
   "name": "pi-extension-switchboard",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "pi": {
     "extensions": [
@@ -16,6 +16,7 @@
     "jiti": "2.7.0"
   },
   "scripts": {
+    "login": "jiti login.ts",
     "test": "node --test test.mjs"
   },
   "license": "MIT",

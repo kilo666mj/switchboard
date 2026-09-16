@@ -43,8 +43,11 @@ test('pi discovers, refreshes, preserves results, and confirms mutations', async
   });
   let connections=0;http.on('connection',()=>connections++);
   http.listen(0,'127.0.0.1');await once(http,'listening');
-  const config=join(dir,'config.json');writeFileSync(config,JSON.stringify({url:`https://127.0.0.1:${http.address().port}/mcp`,token_env:'SWITCHBOARD_PI_TEST_TOKEN'}));
-  process.env.SWITCHBOARD_PI_CONFIG=config;process.env.SWITCHBOARD_CA_CERTS=join(dir,'ca.pem');process.env.SWITCHBOARD_PI_TEST_TOKEN='test-token';
+  const config=join(dir,'config.json');
+  const tokenFile=join(dir,'oauth.json');
+  writeFileSync(config,JSON.stringify({url:`https://127.0.0.1:${http.address().port}/mcp`,issuer:'https://id.example.test',client_id:'pi-switchboard',redirect_url:'http://127.0.0.1:18104/callback',scopes:['openid','groups','mcp:connect','tools:read','tools:write','offline_access']}));
+  writeFileSync(tokenFile,JSON.stringify({access_token:'test-token',token_type:'Bearer'}),{mode:0o600});
+  process.env.SWITCHBOARD_PI_CONFIG=config;process.env.SWITCHBOARD_PI_TOKEN_FILE=tokenFile;process.env.SWITCHBOARD_CA_CERTS=join(dir,'ca.pem');
   const events=new Map(), definitions=new Map();let active=['builtin_read'];let consent=false;const notices=[];const activationHistory=[];
   const pi={on:(name,handler)=>events.set(name,handler),registerTool:tool=>definitions.set(tool.name,tool),getActiveTools:()=>active,setActiveTools:names=>{active=names;activationHistory.push([...names])}};
   const ctx={hasUI:true,ui:{confirm:async()=>consent,notify:message=>notices.push(message)}};
@@ -109,7 +112,7 @@ test('pi discovers, refreshes, preserves results, and confirms mutations', async
 
   } finally {
     await events.get('session_shutdown')();await server.close();http.closeAllConnections();await new Promise(resolve=>http.close(resolve));
-    for(const key of ['SWITCHBOARD_PI_CONFIG','SWITCHBOARD_CA_CERTS','SWITCHBOARD_PI_TEST_TOKEN']) delete process.env[key];
+    for(const key of ['SWITCHBOARD_PI_CONFIG','SWITCHBOARD_PI_TOKEN_FILE','SWITCHBOARD_CA_CERTS']) delete process.env[key];
     rmSync(dir,{recursive:true,force:true});
   }
 });

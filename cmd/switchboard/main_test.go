@@ -25,3 +25,19 @@ func TestBearer(t *testing.T) {
 		})
 	}
 }
+
+func TestRetiredLegacyMCP(t *testing.T) {
+	t.Parallel()
+	request := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	request.Header.Set("Authorization", "Bearer retired-token")
+	response := httptest.NewRecorder()
+
+	retiredLegacyMCP(nil).ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
+	}
+	if got := response.Header().Get("WWW-Authenticate"); got != "Bearer" {
+		t.Fatalf("WWW-Authenticate = %q, want Bearer", got)
+	}
+}

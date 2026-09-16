@@ -161,6 +161,26 @@ Before enabling a client, verify that:
 - an ID token, expired token, wrong-audience token, and static token with the
   migration switch disabled are all rejected.
 
+### Private deployment status
+
+The private pilot now uses Pocket ID UserInfo groups with composed policies.
+Fresh OAuth sessions have verified the expected policy-component union,
+effective-policy hash, representative read-only calls, and denial of a staged
+capability whose group is absent. Rendercase and Tintwire now accept a reserved
+per-call subject only when Switchboard authenticates with their configured
+service client, and Switchboard forwards that subject only from a verified OAuth
+session. Their exact-tool policies are deployed but remain unassigned pending
+distinct-user and denied-caller tests. Static session clients and the legacy MCP
+bearer remain enabled only as migration rollback paths until every installed
+client has moved and the remaining entitlement and network-isolation checks
+pass.
+
+Prometheus deployment automation and alert rules live in
+[`ansible/monitoring.yml`](../ansible/monitoring.yml) and
+[`monitoring/switchboard.rules.yml`](../monitoring/switchboard.rules.yml). The
+alerts cover repeated authentication failures, UserInfo validation failures,
+and changes to a composed component set's effective-policy hash.
+
 ## Migration
 
 ### Read-only pilot expansion

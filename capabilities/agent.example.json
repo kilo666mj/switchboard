@@ -2,6 +2,10 @@
   "version": 1,
   "type": "mcp",
   "name": "agent",
+  "title": "Agent Relay",
+  "tags": ["agents", "messages", "tasks"],
+  "risk": "mutating",
+  "description": "Coordinate durable messages and tasks between agents.",
   "endpoint_env": "AGENT_RELAY_MCP_URL",
   "headers": {
     "Authorization": {

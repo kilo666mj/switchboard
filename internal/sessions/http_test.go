@@ -44,6 +44,42 @@ func fixture(t *testing.T) (*Handler, *httptest.Server) {
 	return h, api
 }
 
+func TestUnavailableCapabilityDoesNotBlockHandlerAndCanRecover(t *testing.T) {
+	t.Setenv("CLIENT_A", strings.Repeat("a", 32))
+	healthy, err := rest.New(rest.Manifest{Version: 1, Name: "healthy", BaseURL: "https://healthy.example.test", Tools: []rest.Tool{{Name: "status", Path: "/status", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := rest.New(rest.Manifest{Version: 1, Name: "broken", BaseURL: "https://broken.example.test", Tools: []rest.Tool{{Name: "status", Path: "/status", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{
+		Transport: "http", Profile: "all",
+		Profiles:     map[string][]string{"all": {"healthy", "broken"}},
+		Clients:      map[string]config.Client{"alice": {TokenEnv: "CLIENT_A", Profile: "all", InitialCapabilities: []string{"healthy", "broken"}, Discover: true, Execute: true}},
+		ToolPolicies: map[string]config.ToolPolicy{},
+	}
+	h, err := NewWithAuthUnavailable(t.Context(), "test", cfg, []capability.Capability{healthy}, []string{"broken"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(h.Close)
+	if h.capabilities["healthy"] == nil || h.capabilities["broken"] != nil {
+		t.Fatalf("initial capabilities = %#v", h.capabilities)
+	}
+	filtered := policyForAvailableCapabilities(cfg.Clients["alice"], []capability.Capability{healthy})
+	if len(filtered.InitialCapabilities) != 1 || filtered.InitialCapabilities[0] != "healthy" {
+		t.Fatalf("filtered initial capabilities = %v", filtered.InitialCapabilities)
+	}
+	if err := h.AddCapability(recovered); err != nil {
+		t.Fatal(err)
+	}
+	if h.capabilities["broken"] == nil || h.unavailable["broken"] {
+		t.Fatalf("recovered capability not installed: capabilities=%#v unavailable=%#v", h.capabilities, h.unavailable)
+	}
+}
+
 func request(t *testing.T, api *httptest.Server, method, token, id, body string) (int, string, string) {
 	t.Helper()
 	req, err := http.NewRequest(method, api.URL, strings.NewReader(body))
@@ -253,6 +289,26 @@ func TestIdentityLimitsAreSharedAcrossSessions(t *testing.T) {
 
 type fakeOAuthAuthenticator struct{}
 
+type oauthSubjectCapability struct{ subject string }
+
+func (c *oauthSubjectCapability) Name() string { return "subject" }
+
+func (c *oauthSubjectCapability) Describe() capability.Description {
+	return capability.Description{Name: c.Name(), Tools: []capability.ToolSummary{{Name: "subject_current"}}}
+}
+
+func (c *oauthSubjectCapability) BindOAuthSubject(subject string) (capability.Capability, error) {
+	return &oauthSubjectCapability{subject: subject}, nil
+}
+
+func (c *oauthSubjectCapability) Register(server *mcp.Server) error {
+	mcp.AddTool(server, &mcp.Tool{Name: "subject_current"},
+		func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, map[string]string, error) {
+			return nil, map[string]string{"subject": c.subject}, nil
+		})
+	return nil
+}
+
 func (fakeOAuthAuthenticator) Authenticate(r *http.Request) (auth.Principal, error) {
 	switch r.Header.Get("Authorization") {
 	case "Bearer oauth-alice-read":
@@ -296,6 +352,9 @@ func TestCloudflareAccessSessionAuthenticationDoesNotRequireAuthorizationHeader(
 	if client.name != "cloudflare_access:subject-alice" || client.binding != "cloudflare_access:people" {
 		t.Fatalf("client = %+v", client)
 	}
+	if client.oauthSubject != "" {
+		t.Fatal("Cloudflare Access identity was marked for OAuth subject forwarding")
+	}
 	request.Header.Set("Authorization", "Bearer unexpected")
 	if _, err := handler.authenticate(request); !errors.Is(err, auth.ErrAmbiguousCredential) {
 		t.Fatalf("ambiguous credential error = %v", err)
@@ -325,6 +384,12 @@ func TestOAuthSessionsBindSubjectAndMappedPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer handler.Close()
+	authRequest := httptest.NewRequest(http.MethodPost, "/mcp/sessions", nil)
+	authRequest.Header.Set("Authorization", "Bearer oauth-alice-read")
+	client, err := handler.authenticate(authRequest)
+	if err != nil || client.oauthSubject != "subject-alice" {
+		t.Fatalf("OAuth subject binding = %+v, %v", client, err)
+	}
 	api := httptest.NewServer(handler)
 	defer api.Close()
 	status, id, body := request(t, api, http.MethodPost, "oauth-alice-read", "", initialize)
@@ -338,6 +403,46 @@ func TestOAuthSessionsBindSubjectAndMappedPolicy(t *testing.T) {
 	status, _, _ = request(t, api, http.MethodPost, strings.Repeat("a", 32), "", initialize)
 	if status != http.StatusUnauthorized {
 		t.Fatalf("disabled static token status: %d", status)
+	}
+}
+
+func TestOAuthSessionBindsSubjectOnlyForOAuthClient(t *testing.T) {
+	staticToken := strings.Repeat("s", 32)
+	t.Setenv("STATIC_TOKEN", staticToken)
+	cfg := config.Config{
+		Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"subject"}},
+		Clients: map[string]config.Client{"static": {TokenEnv: "STATIC_TOKEN", Profile: "all", Execute: true}},
+		OAuth: &config.OAuthConfig{
+			Issuer: "https://id.example.com", Resource: "https://switchboard.example.com/mcp/sessions", RequiredScopes: []string{"mcp:connect"}, AllowStaticClients: true,
+			Policies: map[string]config.OAuthPolicy{"readers": {Version: "pilot-v1", Subjects: []string{"subject-alice"}, Profile: "all", Execute: true}},
+		},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	handler, err := NewWithAuth(ctx, "test", cfg, []capability.Capability{&oauthSubjectCapability{}}, nil, fakeOAuthAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handler.Close()
+	api := httptest.NewServer(handler)
+	defer api.Close()
+
+	status, oauthID, body := request(t, api, http.MethodPost, "oauth-alice-read", "", initialize)
+	if status != http.StatusOK || oauthID == "" {
+		t.Fatalf("OAuth initialize: %d %s", status, body)
+	}
+	status, _, body = request(t, api, http.MethodPost, "oauth-alice-read", oauthID, `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"subject_current","arguments":{}}}`)
+	if status != http.StatusOK || !strings.Contains(body, `"subject":"subject-alice"`) {
+		t.Fatalf("OAuth delegated call: %d %s", status, body)
+	}
+
+	status, staticID, body := request(t, api, http.MethodPost, staticToken, "", initialize)
+	if status != http.StatusOK || staticID == "" {
+		t.Fatalf("static initialize: %d %s", status, body)
+	}
+	status, _, body = request(t, api, http.MethodPost, staticToken, staticID, `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"subject_current","arguments":{}}}`)
+	if status != http.StatusOK || !strings.Contains(body, `"subject":""`) {
+		t.Fatalf("static delegated call: %d %s", status, body)
 	}
 }
 
@@ -477,7 +582,7 @@ func TestOAuthStaticClientMigrationSwitch(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/mcp/sessions", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	client, err := handler.authenticate(request)
-	if err != nil || client.binding != "static:migration" {
+	if err != nil || client.binding != "static:migration" || client.oauthSubject != "" {
 		t.Fatalf("migration authentication = %+v, %v", client, err)
 	}
 }

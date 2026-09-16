@@ -125,7 +125,7 @@ func TestAuthenticateRejectsUntrustedUserInfo(t *testing.T) {
 			})})
 			authenticator.cfg.GroupSource = config.OAuthGroupSourceUserInfo
 			authenticator.groups = resolver
-			if _, err := authenticator.Authenticate(authenticatedRequest()); !errors.Is(err, ErrInvalidToken) {
+			if _, err := authenticator.Authenticate(authenticatedRequest()); !errors.Is(err, ErrInvalidToken) || !errors.Is(err, ErrUserInfo) {
 				t.Fatalf("error = %v", err)
 			}
 		})
@@ -239,7 +239,7 @@ func TestProtectedResourceMetadataAndChallenge(t *testing.T) {
 	}
 	response = httptest.NewRecorder()
 	authenticator.WriteError(response, ErrMissingToken)
-	if challenge := response.Header().Get("WWW-Authenticate"); response.Code != http.StatusUnauthorized || strings.Contains(challenge, "error=") {
+	if challenge := response.Header().Get("WWW-Authenticate"); response.Code != http.StatusUnauthorized || strings.Contains(challenge, "error=") || !strings.Contains(challenge, `scope="mcp:connect tools:read"`) {
 		t.Fatalf("missing-token status=%d challenge=%q", response.Code, challenge)
 	}
 	response = httptest.NewRecorder()
