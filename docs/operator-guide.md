@@ -600,10 +600,10 @@ directory. Put TLS termination on the same host and proxy to
 
 ## Public release privacy
 
-Switchboard and Agent Relay must pass the [privacy release gate](privacy-release.md)
-on their exact publication candidates. Original private history is not cleared
-for publication. Run `python3 scripts/privacy-audit.py` and the documented secret
-scan before release; the snapshot helper does not publish either repository.
+Run the [privacy release gate](privacy-release.md) on the exact commit and refs
+intended for publication. Complete the full-history privacy and secret scans,
+artifact verification, attribution review, and hosted checks before publishing
+a release.
 
 ## Agent Relay coordination
 
