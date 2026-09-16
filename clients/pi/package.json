@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
-    "undici": "8.9.0"
+    "undici": "8.10.2"
   },
   "devDependencies": {
     "jiti": "2.7.0"
