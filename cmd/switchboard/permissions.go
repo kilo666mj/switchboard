@@ -116,6 +116,10 @@ func runPermissionsWithWriter(args []string, output io.Writer) error {
 	flags.SetOutput(output)
 	configPath := flags.String("config", "switchboard.json", "path to Switchboard configuration")
 	jsonOutput := flags.Bool("json", false, "write machine-readable JSON")
+	var strict *bool
+	if action == "lint" {
+		strict = flags.Bool("strict", false, "return non-zero when lint reports warnings")
+	}
 	if action == "report" || action == "lint" {
 		if err := flags.Parse(args[1:]); err != nil {
 			return err
@@ -128,7 +132,14 @@ func runPermissionsWithWriter(args []string, output io.Writer) error {
 			return err
 		}
 		if action == "lint" {
-			return writePermissionWarnings(output, sessions.LintPermissions(cfg), *jsonOutput)
+			warnings := sessions.LintPermissions(cfg)
+			if err := writePermissionWarnings(output, warnings, *jsonOutput); err != nil {
+				return err
+			}
+			if *strict && len(warnings) > 0 {
+				return fmt.Errorf("permission lint found %d warning(s)", len(warnings))
+			}
+			return nil
 		}
 		return writePermissionReport(output, buildPermissionReport(cfg), *jsonOutput)
 	}

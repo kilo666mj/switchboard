@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kilo666mj/switchboard/internal/capability"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 )
 
 var validName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -125,6 +126,9 @@ func (m *Manifest) Validate() error {
 func (m Manifest) ResolveHeaders() (http.Header, error) {
 	headers := make(http.Header, len(m.Headers))
 	for name, value := range m.Headers {
+		if strings.EqualFold(name, requestmeta.CorrelationIDHeader) {
+			return nil, fmt.Errorf("header %q is reserved for gateway correlation", requestmeta.CorrelationIDHeader)
+		}
 		if value.Env == "" {
 			return nil, fmt.Errorf("header %q must reference an environment variable", name)
 		}

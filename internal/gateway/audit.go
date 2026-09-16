@@ -10,6 +10,7 @@ import (
 
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -44,6 +45,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 
 			started := time.Now()
 			correlationID := rand.Text()
+			callContext := requestmeta.WithCorrelationID(ctx, correlationID)
 			decision, outcome := "allow", "success"
 			var result mcp.Result
 			var err error
@@ -64,7 +66,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 					result = toolPolicyError("tool call rejected by operator limits")
 				} else {
 					defer release()
-					result, err = next(ctx, method, req)
+					result, err = next(callContext, method, req)
 					if err != nil {
 						outcome = "protocol_error"
 					} else if callResult, ok := result.(*mcp.CallToolResult); ok && callResult.IsError {
@@ -78,7 +80,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 			}
 			// Arguments, results, and error strings are intentionally excluded.
 			duration := time.Since(started)
-			slog.InfoContext(ctx, "tool_invocation",
+			slog.InfoContext(callContext, "tool_invocation",
 				"identity", identity,
 				"profile", profile,
 				"identity_policy", identityPolicy,

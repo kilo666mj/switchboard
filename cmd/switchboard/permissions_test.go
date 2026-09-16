@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kilo666mj/switchboard/internal/config"
@@ -61,6 +62,33 @@ func TestPermissionsReportCommand(t *testing.T) {
 	}
 	if len(report.Providers) != 1 || len(report.Providers[0].Policies) != 1 || report.Providers[0].Policies[0].Name != "readers" {
 		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestPermissionsLintStrictFailsOnWarnings(t *testing.T) {
+	path := permissionCommandFixture(t)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg config.Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	cfg.Profiles["duplicate"] = append([]string{}, cfg.Profiles["all"]...)
+	writeJSONFixture(t, path, cfg)
+
+	var output bytes.Buffer
+	if err := runPermissionsWithWriter([]string{"lint", "-config", path}, &output); err != nil {
+		t.Fatalf("non-strict lint failed: %v", err)
+	}
+	output.Reset()
+	err = runPermissionsWithWriter([]string{"lint", "-config", path, "-strict"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "permission lint found") {
+		t.Fatalf("strict lint error = %v", err)
+	}
+	if !strings.Contains(output.String(), "duplicate_profile") {
+		t.Fatalf("strict lint omitted warnings: %s", output.String())
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/egress"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -146,6 +147,9 @@ func (c *Capability) call(ctx context.Context, tool Tool, arguments map[string]a
 		return nil, err
 	}
 	request.Header = c.headers.Clone()
+	if correlationID := requestmeta.CorrelationID(ctx); correlationID != "" {
+		request.Header.Set(requestmeta.CorrelationIDHeader, correlationID)
+	}
 	request.Header.Set("Accept", "application/json")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")

@@ -295,6 +295,7 @@ model without accepting credentials or changing policy:
 # List identity bindings and flag operator hazards without contacting upstreams.
 switchboard permissions report -config switchboard.json
 switchboard permissions lint -config switchboard.json
+switchboard permissions lint -config switchboard.json -strict
 
 # Expand one configured role through the live capability catalog.
 switchboard permissions explain -config switchboard.json \
@@ -323,7 +324,10 @@ inspection deliberately bypasses subject, group, and scope matching; use
 identity attributes when validating an actual assignment. `diff` loads both
 catalogs and reports changes in tool decisions, decision sources, activation,
 availability, and callability, followed by lint warnings for the proposed
-configuration.
+configuration. Add `-strict` to `lint` in CI or deployment preflight when any
+warning must stop the change. This is especially appropriate for unattended
+workload policies, where broad capability allows and unavailable approval
+decisions should not pass review silently.
 
 `GET /metrics` exposes Prometheus-compatible counters for authentication,
 UserInfo, and authorization failures; session-capacity failures; active
@@ -514,6 +518,12 @@ Structured audit events cover native and compatibility tool calls. They contain
 the authenticated identity (or `legacy-shared`), profile, session and gateway
 correlation identifiers, capability, exact exposed tool, policy version and
 decision, outcome, and duration. They omit arguments, results, and error text.
+Switchboard forwards the gateway correlation identifier to REST and remote MCP
+HTTP upstreams as `X-Switchboard-Correlation-ID`; manifests cannot override the
+header. Local module protocols do not currently receive it. The events are
+written to the process log and become durable only when the deployment ships
+them to a log collector or SIEM. Upstream application records remain the
+authoritative business audit.
 The shared deployment credential still determines the active profile; this does
 not introduce per-client identities or activation. Mutating compatibility calls
 remain unavailable until an explicit confirmation workflow is designed.
@@ -537,6 +547,11 @@ upstream authorization, and application-owned safety workflows.
 The executable provider-style boundary, lifecycle, state ownership, security
 contract, packaging, and control-plane roadmap are documented in
 [Capability module design](modules.md).
+
+For scheduled and otherwise headless workloads, follow the distinct identity,
+exact-tool policy, host-network isolation, and audit-collection requirements in
+[Unattended agents](unattended-agents.md). Switchboard constrains only calls
+routed through it; it is not a shell or host sandbox.
 
 ## Managed client bootstrap
 

@@ -15,6 +15,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/egress"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -137,6 +138,9 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	for name, value := range manifest.Headers {
 		if strings.EqualFold(name, delegatedOAuthSubjectHeader) {
 			return nil, fmt.Errorf("header %q is reserved for verified OAuth subject forwarding", delegatedOAuthSubjectHeader)
+		}
+		if strings.EqualFold(name, requestmeta.CorrelationIDHeader) {
+			return nil, fmt.Errorf("header %q is reserved for gateway correlation", requestmeta.CorrelationIDHeader)
 		}
 		secret := os.Getenv(value.Env)
 		if value.Env == "" || secret == "" {
@@ -350,6 +354,10 @@ func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error
 		}
 	}
 	clone.Header.Del(delegatedOAuthSubjectHeader)
+	clone.Header.Del(requestmeta.CorrelationIDHeader)
+	if correlationID := requestmeta.CorrelationID(request.Context()); correlationID != "" {
+		clone.Header.Set(requestmeta.CorrelationIDHeader, correlationID)
+	}
 	if t.forwardOAuthSubject {
 		if subject, ok := request.Context().Value(delegatedOAuthSubjectContextKey{}).(string); ok && subject != "" {
 			clone.Header.Set(delegatedOAuthSubjectHeader, subject)

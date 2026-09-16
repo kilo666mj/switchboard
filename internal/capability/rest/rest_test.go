@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/kilo666mj/mcpkit/mcpkittest"
@@ -11,15 +12,18 @@ import (
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestCapabilityCallsAPI(t *testing.T) {
 	t.Parallel()
+	var correlationID atomic.Value
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.EscapedPath() != "/v1/zones/example.com/rrsets" {
 			t.Errorf("path = %q", r.URL.EscapedPath())
 		}
+		correlationID.Store(r.Header.Get(requestmeta.CorrelationIDHeader))
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"revision":"abc123"}`))
 	}))
@@ -50,6 +54,9 @@ func TestCapabilityCallsAPI(t *testing.T) {
 	if len(result.Content) != 1 || result.Content[0].(*mcp.TextContent).Text != `{"revision":"abc123"}` {
 		t.Fatalf("unexpected result: %#v", result.Content)
 	}
+	if value, _ := correlationID.Load().(string); value == "" {
+		t.Fatal("gateway correlation ID was not forwarded")
+	}
 }
 
 func TestManifestRejectsLiteralAndEnvironmentBaseURL(t *testing.T) {
@@ -69,6 +76,18 @@ func TestManifestRejectsCredentialOverPlainHTTP(t *testing.T) {
 	}
 	if err := manifest.Validate(); err == nil {
 		t.Fatal("credential-bearing plaintext REST capability was accepted")
+	}
+}
+
+func TestManifestRejectsReservedCorrelationHeader(t *testing.T) {
+	t.Setenv("TEST_CORRELATION", "operator-value")
+	manifest := Manifest{
+		Version: 1, Name: "test", BaseURL: "https://api.example.internal",
+		Headers: map[string]HeaderValue{requestmeta.CorrelationIDHeader: {Env: "TEST_CORRELATION"}},
+		Tools:   []Tool{{Name: "read", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}},
+	}
+	if _, err := New(manifest); err == nil {
+		t.Fatal("reserved correlation header was accepted")
 	}
 }
 

@@ -94,6 +94,7 @@ Inspect effective authorization without changing it:
 ```sh
 switchboard permissions report -config switchboard.json
 switchboard permissions lint -config switchboard.json
+switchboard permissions lint -config switchboard.json -strict
 switchboard permissions explain -config switchboard.json \
   -provider oauth -policy readers
 switchboard permissions diff -config switchboard.json \
@@ -130,6 +131,8 @@ Review the examples before exposing Switchboard outside a trusted network.
 - [Dynamic MCP discovery](docs/dynamic-mcp.md) — catalog and activation design
 - [Capability modules](docs/modules.md) — isolated local integration model
 - [Workplace adoption](docs/workplace-adoption.md) — staged rollout guidance
+- [Unattended agents](docs/unattended-agents.md) — workload identities,
+  network containment, limits, and audit collection
 - [Release archives](docs/releases.md) and
   [privacy gate](docs/privacy-release.md) — reproducible public release process
 

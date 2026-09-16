@@ -15,6 +15,7 @@ import (
 	"github.com/kilo666mj/switchboard/internal/capability/rest"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -52,7 +53,9 @@ func TestSessionPermissions(t *testing.T) {
 }
 
 func TestSessionAuditsNativeToolWithoutPayloads(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var upstreamCorrelationID atomic.Value
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamCorrelationID.Store(r.Header.Get(requestmeta.CorrelationIDHeader))
 		_, _ = w.Write([]byte("secret-result-canary"))
 	}))
 	defer upstream.Close()
@@ -82,6 +85,10 @@ func TestSessionAuditsNativeToolWithoutPayloads(t *testing.T) {
 	}
 	if strings.Contains(audit, "secret-argument-canary") || strings.Contains(audit, "secret-result-canary") {
 		t.Fatalf("audit leaked tool payload: %s", audit)
+	}
+	correlationID, _ := upstreamCorrelationID.Load().(string)
+	if correlationID == "" || !strings.Contains(audit, `"correlation_id":"`+correlationID+`"`) {
+		t.Fatalf("upstream and audit correlation IDs differ: upstream=%q audit=%s", correlationID, audit)
 	}
 }
 

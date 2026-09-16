@@ -14,10 +14,12 @@ import (
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
+	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestCapabilityDiscoversAndProxiesTool(t *testing.T) {
+	var correlationID atomic.Value
 	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "memory", Version: "test"})
 	mcp.AddTool(upstream, &mcp.Tool{Name: "remember", Description: "Remember", Annotations: mcpkit.Mutating(false, false)},
 		func(_ context.Context, _ *mcp.CallToolRequest, input struct {
@@ -28,6 +30,9 @@ func TestCapabilityDiscoversAndProxiesTool(t *testing.T) {
 	upstreamHandler, err := mcpkit.StatelessHTTP(func(r *http.Request) *mcp.Server {
 		if r.Header.Get("Authorization") != "Bearer upstream-secret" {
 			return nil
+		}
+		if value := r.Header.Get(requestmeta.CorrelationIDHeader); value != "" {
+			correlationID.Store(value)
 		}
 		return upstream
 	}, mcpkit.HTTPOptions{DisableLocalhostProtection: true})
@@ -57,6 +62,20 @@ func TestCapabilityDiscoversAndProxiesTool(t *testing.T) {
 	}
 	if result.IsError {
 		t.Fatalf("tool returned error: %#v", result.Content)
+	}
+	if value, _ := correlationID.Load().(string); value == "" {
+		t.Fatal("gateway correlation ID was not forwarded")
+	}
+}
+
+func TestCapabilityRejectsReservedCorrelationHeader(t *testing.T) {
+	t.Setenv("UPSTREAM_CORRELATION", "operator-value")
+	_, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "https://example.test/mcp",
+		Headers: map[string]HeaderValue{requestmeta.CorrelationIDHeader: {Env: "UPSTREAM_CORRELATION"}},
+	})
+	if err == nil {
+		t.Fatal("reserved correlation header was accepted")
 	}
 }
 

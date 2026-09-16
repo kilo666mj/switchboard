@@ -32,6 +32,8 @@ jobs:
         run: go test -race ./...
       - name: Static checks
         run: go vet ./...
+      - name: Strict example permission policy
+        run: go run ./cmd/switchboard permissions lint -config switchboard.example.json -strict
       - name: Release tooling tests and source privacy check
         run: |
           python3 -m unittest discover -s scripts -p 'test_*.py'

@@ -8,8 +8,8 @@
     "infrastructure-read": {
       "version": "example-v1",
       "profile": "infrastructure-read",
-      "capabilities": {
-        "rilldns": "allow"
+      "tools": {
+        "rilldns_dns_refresh_status": "allow"
       }
     }
   },
