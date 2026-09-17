@@ -281,7 +281,7 @@ See the README for execution arguments, validation, bounds, and audit behavior.
 2. Advertise the MCP tool-list change capability.
 3. Notify clients and verify refresh behavior across supported agents.
    SDK integration and installed-client results are recorded in
-   [the rollout notes](rollout.md#verified-rollout-2026-09-05).
+   [the rollout notes](rollout.md#client-compatibility-checks).
 4. Use native tools on clients with verified refresh and read-only
    `capability_execute` on clients with cached or unqualified tool lists. The
    initial deployment keeps the fallback available to all execute-enabled clients.
