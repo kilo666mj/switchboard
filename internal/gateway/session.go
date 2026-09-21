@@ -27,6 +27,19 @@ func NewSession(version, id, identity string, policy config.Client, toolPolicy c
 	if toolPolicy.Profile != policy.Profile {
 		return nil, fmt.Errorf("tool policy profile %q does not match client profile %q", toolPolicy.Profile, policy.Profile)
 	}
+	bound := make([]capability.Capability, 0, len(allowed))
+	for _, item := range allowed {
+		if binder, ok := item.(capability.SessionIdentityBinder); ok {
+			name := item.Name()
+			var err error
+			item, err = binder.BindSessionIdentity(id)
+			if err != nil {
+				return nil, fmt.Errorf("bind session identity for capability %s: %w", name, err)
+			}
+		}
+		bound = append(bound, item)
+	}
+	allowed = bound
 	server := mcp.NewServer(&mcp.Implementation{Name: "switchboard", Version: version}, &mcp.ServerOptions{
 		GetSessionID: func() string { return id },
 		Instructions: "Prefer native tools from connected capabilities for external services before falling back to command-line clients. Use capability_search and capability_describe when you need to inspect the approved catalog. Preserve upstream plan, confirmation, and rollback workflows.",
