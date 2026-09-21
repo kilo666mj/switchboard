@@ -88,6 +88,13 @@ Capability credentials are referenced by environment variable:
 
 Do not put credential values in configuration or capability manifests.
 
+An authenticated remote MCP can opt in to `"forward_session_id": true` when
+it groups several tool calls into one presentation identity. Switchboard then
+overwrites `agent_session_key` with its server-issued inbound session ID, but
+only for upstream tools whose declared input schema contains that field. It
+does not add the field to unrelated tools, and callers cannot spoof it through
+Switchboard.
+
 ## Authentication and permissions
 
 The stateless `/mcp` endpoint supports loopback-only unauthenticated use or a

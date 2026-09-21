@@ -43,6 +43,7 @@ type Manifest struct {
 	IncludeTools        []string                `json:"include_tools,omitempty"`
 	AnnotationRules     []AnnotationRule        `json:"annotation_rules,omitempty"`
 	ForwardOAuthSubject bool                    `json:"forward_oauth_subject,omitempty"`
+	ForwardSessionID    bool                    `json:"forward_session_id,omitempty"`
 	InsecureSkipVerify  bool                    `json:"insecure_skip_verify,omitempty"`
 }
 
@@ -77,13 +78,16 @@ type Capability struct {
 	session             *mcp.ClientSession
 	tools               []toolBinding
 	forwardOAuthSubject bool
+	forwardSessionID    bool
 	oauthSubject        string
+	sessionID           string
 }
 
 type toolBinding struct {
-	definition *mcp.Tool
-	upstream   string
-	schema     *jsonschema.Resolved
+	definition       *mcp.Tool
+	upstream         string
+	schema           *jsonschema.Resolved
+	acceptsSessionID bool
 }
 
 func New(ctx context.Context, manifest Manifest) (*Capability, error) {
@@ -154,6 +158,9 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	if manifest.ForwardOAuthSubject && headers.Get("Authorization") == "" && manifest.OAuth == nil {
 		return nil, errors.New("forward_oauth_subject requires authenticated upstream requests")
 	}
+	if manifest.ForwardSessionID && headers.Get("Authorization") == "" && manifest.OAuth == nil {
+		return nil, errors.New("forward_session_id requires authenticated upstream requests")
+	}
 	transport := baseTransport
 	if transport == nil {
 		transport = http.DefaultTransport.(*http.Transport).Clone()
@@ -207,7 +214,7 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 			copy.Annotations = annotations
 		}
 		copy.Name = exposedName(manifest.Name, tool.Name)
-		tools = append(tools, toolBinding{definition: &copy, upstream: tool.Name, schema: resolveInputSchema(tool.InputSchema)})
+		tools = append(tools, toolBinding{definition: &copy, upstream: tool.Name, schema: resolveInputSchema(tool.InputSchema), acceptsSessionID: schemaHasProperty(tool.InputSchema, "agent_session_key")})
 		delete(allowed, tool.Name)
 	}
 	if len(allowed) > 0 {
@@ -219,7 +226,7 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 		_ = session.Close()
 		return nil, fmt.Errorf("%s MCP offered no selected tools", manifest.Name)
 	}
-	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardSessionID: manifest.ForwardSessionID, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
 }
 
 func matchAnnotations(name string, rules []AnnotationRule) (*mcp.ToolAnnotations, error) {
@@ -307,6 +314,18 @@ func (c *Capability) BindOAuthSubject(subject string) (capability.Capability, er
 	return &bound, nil
 }
 
+func (c *Capability) BindSessionIdentity(sessionID string) (capability.Capability, error) {
+	if !c.forwardSessionID {
+		return c, nil
+	}
+	if sessionID == "" || len(sessionID) > 200 || strings.ContainsAny(sessionID, "\r\n") {
+		return nil, errors.New("invalid Switchboard session identity")
+	}
+	bound := *c
+	bound.sessionID = sessionID
+	return &bound, nil
+}
+
 func (c *Capability) callContext(ctx context.Context) context.Context {
 	if !c.forwardOAuthSubject || c.oauthSubject == "" {
 		return ctx
@@ -319,10 +338,41 @@ func (c *Capability) Register(server *mcp.Server) error {
 		tool := *binding.definition
 		upstreamName := binding.upstream
 		server.AddTool(&tool, func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: upstreamName, Arguments: request.Params.Arguments})
+			arguments := request.Params.Arguments
+			if c.forwardSessionID && binding.acceptsSessionID {
+				arguments = withAgentSessionKey(arguments, c.sessionID)
+			}
+			return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: upstreamName, Arguments: arguments})
 		})
 	}
 	return nil
+}
+
+func schemaHasProperty(input any, property string) bool {
+	data, err := json.Marshal(input)
+	if err != nil {
+		return false
+	}
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	return json.Unmarshal(data, &schema) == nil && schema.Properties[property] != nil
+}
+
+func withAgentSessionKey(input json.RawMessage, sessionID string) json.RawMessage {
+	if sessionID == "" {
+		return input
+	}
+	var arguments map[string]any
+	if json.Unmarshal(input, &arguments) != nil || arguments == nil {
+		return input
+	}
+	arguments["agent_session_key"] = sessionID
+	data, err := json.Marshal(arguments)
+	if err != nil {
+		return input
+	}
+	return data
 }
 
 func (c *Capability) Close() error { return c.session.Close() }

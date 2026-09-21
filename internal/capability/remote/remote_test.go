@@ -79,6 +79,52 @@ func TestCapabilityRejectsReservedCorrelationHeader(t *testing.T) {
 	}
 }
 
+func TestCapabilityForwardsServerSessionIDToOptedInToolField(t *testing.T) {
+	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "taskboard", Version: "test"})
+	var received string
+	mcp.AddTool(upstream, &mcp.Tool{Name: "task_start", Description: "Start"},
+		func(_ context.Context, _ *mcp.CallToolRequest, input struct {
+			Title           string `json:"title"`
+			AgentSessionKey string `json:"agent_session_key,omitempty"`
+		}) (*mcp.CallToolResult, map[string]string, error) {
+			received = input.AgentSessionKey
+			return nil, map[string]string{"title": input.Title}, nil
+		})
+	upstreamHandler, err := mcpkit.StatelessHTTP(func(r *http.Request) *mcp.Server {
+		if r.Header.Get("Authorization") != "Bearer upstream-secret" {
+			return nil
+		}
+		return upstream
+	}, mcpkit.HTTPOptions{DisableLocalhostProtection: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := httptest.NewTLSServer(upstreamHandler)
+	defer api.Close()
+	t.Setenv("UPSTREAM_TOKEN", "upstream-secret")
+
+	item, err := newWithTransport(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "taskboard", Endpoint: api.URL, ForwardSessionID: true,
+		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
+	}, nil, api.Client().Transport.(*http.Transport).Clone())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer item.Close()
+	server, err := gateway.NewSession("test", "server-session-1", "alice", config.Client{Profile: "work", ToolPolicy: "work", Execute: true}, config.ToolPolicy{Version: "test", Profile: "work", Capabilities: map[string]string{item.Name(): "allow"}}, nil, nil, []capbase.Capability{item})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := mcpkittest.Connect(t, server)
+	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "taskboard_task_start", Arguments: map[string]any{"title": "Work", "agent_session_key": "caller-spoof"}})
+	if err != nil || result.IsError {
+		t.Fatalf("tool call failed: %v %+v", err, result)
+	}
+	if received != "server-session-1" {
+		t.Fatalf("forwarded agent session key = %q, want server-issued session ID", received)
+	}
+}
+
 func TestExposedNameAvoidsDoublePrefix(t *testing.T) {
 	if got := exposedName("parallaxd", "parallaxd_status"); got != "parallaxd_status" {
 		t.Fatalf("exposedName = %q", got)
@@ -237,6 +283,13 @@ func TestForwardOAuthSubjectRequiresAuthenticatedUpstream(t *testing.T) {
 	}); err == nil {
 		item.Close()
 		t.Fatal("reserved delegated identity header was accepted from a manifest")
+	}
+}
+
+func TestForwardSessionIDRequiresAuthenticatedUpstream(t *testing.T) {
+	if item, err := New(t.Context(), Manifest{Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1", ForwardSessionID: true}); err == nil {
+		item.Close()
+		t.Fatal("unauthenticated session identity configuration was accepted")
 	}
 }
 

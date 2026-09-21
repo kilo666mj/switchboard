@@ -28,6 +28,12 @@ type OAuthSubjectBinder interface {
 	BindOAuthSubject(string) (Capability, error)
 }
 
+// SessionIdentityBinder returns a session-local capability view that may pass
+// Switchboard's server-issued inbound session identity to an opted-in upstream.
+type SessionIdentityBinder interface {
+	BindSessionIdentity(string) (Capability, error)
+}
+
 // ReadOnlyExecutor is implemented by remote MCP capabilities that support the
 // compatibility path. Implementations enforce tool-level safety and schemas.
 type ReadOnlyExecutor interface {
