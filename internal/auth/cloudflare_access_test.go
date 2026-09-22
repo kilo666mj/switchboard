@@ -69,6 +69,40 @@ func TestCloudflareAccessVerifierChecksSignatureIssuerAudienceAndExpiry(t *testi
 	}
 }
 
+func TestCloudflareAccessVerifierAcceptsSignedServiceTokenAssertion(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const issuer = "https://example.cloudflareaccess.com"
+	const audience = "access-audience"
+	const clientID = "0123456789abcdef0123456789abcdef.access"
+	verifier := oidcVerifier{
+		client:   http.DefaultClient,
+		verifier: oidc.NewVerifier(issuer, &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}}, &oidc.Config{ClientID: audience}),
+	}
+	authenticator := newCloudflareAccessAuthenticator(config.CloudflareAccessConfig{
+		TeamDomain: issuer, Audience: audience,
+		Policies: map[string]config.OAuthPolicy{
+			"agent": {Version: "v1", Subjects: []string{"service_token:" + clientID}, Profile: "agents"},
+		},
+	}, verifier)
+	now := time.Now()
+	claims := map[string]any{
+		"iss": issuer, "sub": "", "aud": audience, "iat": now.Unix(), "exp": now.Add(time.Hour).Unix(),
+		"type": "app", "common_name": clientID,
+	}
+	request := cloudflareRequest()
+	request.Header.Set(CloudflareAccessJWTHeader, signJWTWithType(t, key, claims, "JWT"))
+	principal, err := authenticator.Authenticate(request)
+	if err != nil {
+		t.Fatalf("valid signed service-token assertion: %v", err)
+	}
+	if principal.Identity != "cloudflare_access:service_token:"+clientID {
+		t.Fatalf("principal = %+v", principal)
+	}
+}
+
 func cloudflareRequest() *http.Request {
 	request := httptest.NewRequest(http.MethodPost, "https://switchboard.example.com/mcp/sessions", nil)
 	request.Header.Set(CloudflareAccessJWTHeader, "signed-access-assertion")
@@ -85,6 +119,88 @@ func TestCloudflareAccessMapsVerifiedIdentityAndGroups(t *testing.T) {
 	}
 	if principal.Identity != "cloudflare_access:subject-1" || principal.Source != "cloudflare_access" || principal.PolicyName != "people" || principal.Policy.Profile != "workstation" {
 		t.Fatalf("principal = %+v", principal)
+	}
+}
+
+func TestCloudflareAccessMapsVerifiedServiceTokenIdentity(t *testing.T) {
+	const clientID = "0123456789abcdef0123456789abcdef.access"
+	authenticator := newCloudflareAccessAuthenticator(config.CloudflareAccessConfig{
+		TeamDomain: "https://example.cloudflareaccess.com", Audience: "access-audience",
+		Policies: map[string]config.OAuthPolicy{
+			"agent": {Version: "v1", Subjects: []string{"service_token:" + clientID}, Profile: "agents", Execute: true},
+		},
+	}, fakeVerifier{token: verifiedToken{Claims: rawClaims(map[string]any{
+		"type": "app", "common_name": clientID,
+	})}})
+	principal, err := authenticator.Authenticate(cloudflareRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if principal.Identity != "cloudflare_access:service_token:"+clientID || principal.Source != "cloudflare_access" || principal.PolicyName != "agent" || principal.Policy.Profile != "agents" {
+		t.Fatalf("principal = %+v", principal)
+	}
+}
+
+func TestCloudflareAccessServiceTokensRequireExactSubjectPolicy(t *testing.T) {
+	const clientID = "0123456789abcdef0123456789abcdef.access"
+	authenticator := cloudflareFixture(verifiedToken{Claims: rawClaims(map[string]any{
+		"type": "app", "common_name": clientID, "groups": []string{"people"},
+	})})
+	if _, err := authenticator.Authenticate(cloudflareRequest()); !errors.Is(err, ErrInvalidAccessAssertion) {
+		t.Fatalf("service token with user groups error = %v", err)
+	}
+	policies := map[string]config.OAuthPolicy{
+		"agent-a": {Version: "v1", Subjects: []string{"service_token:" + clientID}, Profile: "agents"},
+	}
+	token := verifiedToken{Claims: rawClaims(map[string]any{"type": "app", "common_name": clientID})}
+	authenticator = newCloudflareAccessAuthenticator(config.CloudflareAccessConfig{Policies: policies}, fakeVerifier{token: token})
+	policies["agent-b"] = policies["agent-a"]
+	if _, err := authenticator.Authenticate(cloudflareRequest()); !errors.Is(err, ErrAmbiguousPolicy) {
+		t.Fatalf("ambiguous service-token policy error = %v", err)
+	}
+	delete(policies, "agent-a")
+	delete(policies, "agent-b")
+	policies["other"] = config.OAuthPolicy{Version: "v1", Subjects: []string{"service_token:other.access"}, Profile: "agents"}
+	if _, err := authenticator.Authenticate(cloudflareRequest()); !errors.Is(err, ErrPolicyDenied) {
+		t.Fatalf("unmapped service-token policy error = %v", err)
+	}
+}
+
+func TestCloudflareAccessRejectsAmbiguousIdentityShapes(t *testing.T) {
+	const clientID = "0123456789abcdef0123456789abcdef.access"
+	tests := map[string]verifiedToken{
+		"service token missing common name": {Claims: rawClaims(map[string]any{"type": "app"})},
+		"service token with email": {Claims: rawClaims(map[string]any{
+			"type": "app", "common_name": clientID, "email": "machine@example.com",
+		})},
+		"service token invalid common name": {Claims: rawClaims(map[string]any{
+			"type": "app", "common_name": "bad\nclient.access",
+		})},
+		"human with common name": {Subject: "subject-1", Claims: rawClaims(map[string]any{
+			"type": "app", "email": "person@example.com", "common_name": clientID, "groups": []string{"people"},
+		})},
+	}
+	for name, token := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := cloudflareFixture(token).Authenticate(cloudflareRequest()); !errors.Is(err, ErrInvalidAccessAssertion) {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
+func TestCloudflareAccessIgnoresUnsignedServiceTokenHeaders(t *testing.T) {
+	const clientID = "0123456789abcdef0123456789abcdef.access"
+	request := cloudflareRequest()
+	request.Header.Set("Cf-Access-Client-Id", clientID)
+	authenticator := newCloudflareAccessAuthenticator(config.CloudflareAccessConfig{
+		TeamDomain: "https://example.cloudflareaccess.com", Audience: "access-audience",
+		Policies: map[string]config.OAuthPolicy{
+			"agent": {Version: "v1", Subjects: []string{"service_token:" + clientID}, Profile: "agents"},
+		},
+	}, fakeVerifier{token: verifiedToken{Claims: rawClaims(map[string]any{"type": "app"})}})
+	if _, err := authenticator.Authenticate(request); !errors.Is(err, ErrInvalidAccessAssertion) {
+		t.Fatalf("unsigned client ID error = %v", err)
 	}
 }
 

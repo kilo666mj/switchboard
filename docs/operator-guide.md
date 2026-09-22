@@ -444,12 +444,34 @@ stable subject, and email. Root and `custom.groups` claims are combined for
 exact policy matching. Audit identities are prefixed with
 `cloudflare_access:` to prevent collisions with OAuth subjects.
 
+Cloudflare Access service tokens can identify unattended workloads without a
+user login. Their signed application assertion has an empty `sub` and carries
+the service-token Client ID in `common_name`. Switchboard accepts this disjoint
+machine-identity shape only when `common_name` is safe and ends in `.access`,
+the email claim is absent, and no root or custom group entitlement is present.
+Configure the corresponding identity policy with the exact namespaced subject
+`service_token:<common_name>`. The resulting audit and session identity is
+`cloudflare_access:service_token:<common_name>`.
+
+Give each workload or agent trust domain a different service token and select
+that exact token in a Cloudflare Service Auth policy. Cloudflare consumes the
+client ID and secret at the edge; Switchboard does not trust
+`CF-Access-Client-Id` or `CF-Access-Client-Secret` and derives identity only
+from the verified `Cf-Access-Jwt-Assertion`. A service-token policy therefore
+uses exact `subjects`, not human group policies.
+
 Cloudflare Access is an additional inbound identity source; it is not advertised
 as an MCP OAuth authorization server. When OAuth is also configured, requests
 without an Access assertion retain the normal RFC 9728 OAuth challenge. A
 request containing both an Authorization credential and an Access assertion is
 rejected as ambiguous. Static clients stay enabled only when every configured
 identity provider explicitly enables its migration switch.
+
+During a staged migration, an Access-protected hostname and a private static
+client route may target the same `/mcp/sessions` origin. Keep each rollback
+client explicitly named in `cloudflare_access.static_client_allowlist`; remove
+that allowlist entry and revoke the shared credential after the workload has
+moved to its distinct Access service token.
 
 Restrict the origin so clients cannot bypass Cloudflare, and configure the proxy
 to remove any client-supplied assertion before injecting its verified header.
