@@ -19,7 +19,7 @@
   {"id":"rendercase-03","request":"Create a revocable sharing link for the report.","expected":"rendercase","candidate_set":"full"},
   {"id":"rendercase-04","request":"Get the design system I should use for a new artifact.","expected":"rendercase","candidate_set":"full"},
 
-  {"id":"rilldns-01","request":"Test what address api.internal resolves to.","expected":"rilldns","candidate_set":"infrastructure"},
+  {"id":"rilldns-01","request":"Test what address api.example.com resolves to.","expected":"rilldns","candidate_set":"infrastructure"},
   {"id":"rilldns-02","request":"Plan an A record change without publishing it.","expected":"rilldns","candidate_set":"full"},
   {"id":"rilldns-03","request":"List the managed DNS zones and their SOA revisions.","expected":"rilldns","candidate_set":"infrastructure"},
   {"id":"rilldns-04","request":"Check DNSSEC, zone transfer, and blocklist refresh health.","expected":"rilldns","candidate_set":"full"},
