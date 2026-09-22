@@ -6,6 +6,13 @@ written before either system was run. `catalog.json` is a public-metadata
 snapshot of the eight capabilities visible to the evaluated Switchboard
 profile; its narrower candidate sets exercise policy filtering.
 
+`holdout.json` is the production-readiness holdout. Its labels were written and
+frozen before any request was sent to the evaluated model. It contains 104 new
+requests: 80 single-capability routable cases and 24 cases expected to abstain,
+split evenly among ambiguous, multi-capability, and out-of-catalog requests.
+The frozen file SHA-256 is
+`b23f2282c35ca1607a3451e631a3ea61d6ead066e7f59ad3e9d1070e203a9f1f`.
+
 ## Protocol
 
 For each case, give both systems the exact `request` string and only the
@@ -38,6 +45,20 @@ Report:
   serialize concurrent requests.
 - **Resource use:** service startup-to-listen time, process memory, GPU/GTT
   allocation, model artifact size, and request errors.
+
+The live runner sends one context per HTTP request, matching the production
+adapter rather than using the endpoint's batch shortcut. It records every raw
+distribution in its JSON report:
+
+```sh
+go run ./benchmarks/capability-routing \
+  -cases benchmarks/capability-routing/holdout.json \
+  -endpoint http://127.0.0.1:18096/v1/decision \
+  -workers 1
+```
+
+Run it only against a loopback endpoint or an isolated tunnel. The holdout is
+synthetic public metadata and the runner has no activation or execution path.
 
 For two or more choices, confidence is:
 
