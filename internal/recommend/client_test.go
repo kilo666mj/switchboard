@@ -112,6 +112,7 @@ func TestRecommendCircuitBreaker(t *testing.T) {
 
 func TestRecommendRejectsIncompleteOrUnauthorizedResponses(t *testing.T) {
 	for name, response := range map[string]string{
+		"malformed-json":       `{not-json`,
 		"missing-distribution": `{"object":"decision","results":[{"fields":{"capability":{"value":"dns","probability":1,"tree":true}}}]}`,
 		"greedy":               `{"object":"decision","results":[{"fields":{"capability":{"value":"dns","probability":1,"probabilities":{"dns":1,"forgejo":0},"tree":false}}}]}`,
 		"unauthorized":         `{"object":"decision","results":[{"fields":{"capability":{"value":"shell","probability":1,"probabilities":{"dns":0,"forgejo":1},"tree":true}}}]}`,
@@ -129,6 +130,44 @@ func TestRecommendRejectsIncompleteOrUnauthorizedResponses(t *testing.T) {
 				t.Fatal("invalid response accepted")
 			}
 		})
+	}
+}
+
+func TestRecommendTimesOutWithoutLeakingRequest(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+	}))
+	defer server.Close()
+	client, err := New(config.CapabilityRecommenderConfig{
+		Endpoint: server.URL + "/v1/decision", Model: "model", TimeoutMS: 20,
+	}, server.Client().Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Recommend(t.Context(), "secret-timeout-request-canary", []Candidate{{Name: "dns"}})
+	if err == nil || !strings.Contains(err.Error(), "request failed") {
+		t.Fatalf("timeout error = %v", err)
+	}
+	if strings.Contains(err.Error(), "secret-timeout-request-canary") {
+		t.Fatalf("timeout leaked request: %v", err)
+	}
+}
+
+func TestRecommendBackendDownOpensCircuit(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	transport := server.Client().Transport
+	client, err := New(config.CapabilityRecommenderConfig{Endpoint: server.URL + "/v1/decision", Model: "model"}, transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.Close()
+	for range breakerThreshold {
+		if _, err := client.Recommend(t.Context(), "route this", []Candidate{{Name: "dns"}}); err == nil {
+			t.Fatal("unreachable backend accepted")
+		}
+	}
+	if _, err := client.Recommend(t.Context(), "route this", []Candidate{{Name: "dns"}}); err == nil || !strings.Contains(err.Error(), "circuit is open") {
+		t.Fatalf("open circuit error = %v", err)
 	}
 }
 

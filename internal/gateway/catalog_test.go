@@ -1,8 +1,10 @@
 package gateway_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,13 +20,14 @@ import (
 
 type fakeRecommender struct {
 	candidates []recommend.Candidate
+	model      string
 }
 
 func (f *fakeRecommender) Recommend(_ context.Context, _ string, candidates []recommend.Candidate) (recommend.Result, error) {
 	f.candidates = append([]recommend.Candidate(nil), candidates...)
 	return recommend.Result{
 		Choice: "forgejo", Probabilities: map[string]float64{"dns": 0.2, "forgejo": 0.8},
-		Confidence: 0.5, LowConfidence: true, Model: "test-model",
+		Confidence: 0.5, LowConfidence: true, Model: f.model,
 	}, nil
 }
 
@@ -111,13 +114,17 @@ func TestCapabilityRecommendUsesOnlyPolicyVisibleCatalog(t *testing.T) {
 		t.Fatal(err)
 	}
 	policy := config.ToolPolicy{Version: "test", Profile: "restricted", Tools: map[string]string{"dns_status": "allow", "forgejo_issues": "allow"}}
-	fake := &fakeRecommender{}
+	fake := &fakeRecommender{model: "secret-recommendation-result-canary"}
 	server, err := gateway.NewWithMetricsAndRecommender("test", "restricted", "test", policy, items, nil, fake)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	defer slog.SetDefault(previous)
 	session := mcpkittest.Connect(t, server)
-	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "capability_recommend", Arguments: map[string]any{"request": "find an issue"}})
+	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "capability_recommend", Arguments: map[string]any{"request": "secret-recommendation-request-canary: find an issue"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +147,18 @@ func TestCapabilityRecommendUsesOnlyPolicyVisibleCatalog(t *testing.T) {
 			t.Fatalf("missing %q in %s", wanted, data)
 		}
 	}
-	if strings.Contains(string(data), "secret") || strings.Contains(string(data), "Hidden") {
+	if strings.Contains(string(data), "dns_secret") || strings.Contains(string(data), "Hidden tool") {
 		t.Fatalf("hidden catalog leaked: %s", data)
+	}
+	audit := logs.String()
+	for _, field := range []string{`"msg":"tool_invocation"`, `"capability":"switchboard"`, `"tool":"capability_recommend"`, `"outcome":"success"`} {
+		if !strings.Contains(audit, field) {
+			t.Fatalf("missing audit field %s: %s", field, audit)
+		}
+	}
+	for _, canary := range []string{"secret-recommendation-request-canary", "secret-recommendation-result-canary"} {
+		if strings.Contains(audit, canary) {
+			t.Fatalf("recommendation audit leaked %s: %s", canary, audit)
+		}
 	}
 }

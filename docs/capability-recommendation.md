@@ -187,8 +187,10 @@ search or capability execution.
 Operational ownership remains with the decision-service deployment. Pin both
 the llama.cpp source commit and model artifact checksum, build the binary in the
 reviewed deployment pipeline, and roll out through the existing Ansible role.
-The deployed runtime is a clean checkout of
-[`thecodacus/llama.cpp@14d04e755fa28653e87b9a07072892265bdc0fad`](https://github.com/thecodacus/llama.cpp/tree/14d04e755fa28653e87b9a07072892265bdc0fad);
+The evaluated exact-distribution runtime is a clean checkout of
+[`thecodacus/llama.cpp@e79f2e8051dc6f1532d29b45ffc2f4644ed8da9a`](https://github.com/thecodacus/llama.cpp/tree/e79f2e8051dc6f1532d29b45ffc2f4644ed8da9a);
+the deployed `llama-server` binary SHA-256 is
+`1987c2851f446ce66e04e662e425720d8fd2d3692fa83ba95cbea2313e8b46c1`;
 that source is MIT-licensed. The model artifact comes from
 [`unsloth/gemma-4-12b-it-GGUF`](https://huggingface.co/unsloth/gemma-4-12b-it-GGUF)
 (`UD-Q4_K_XL`), whose model card identifies Gemma 4 and the quantization as
@@ -205,23 +207,43 @@ GPU device. Record hashes outside the sandbox before execution. Do not execute
 installer hooks or downloaded packages merely because a project describes
 itself as local or open source.
 
-## Adoption decision (2026-09-22)
+## Final adoption decision (2026-09-22)
 
-**Revise / conditional go.** Merge and review the disabled-by-default
-Switchboard adapter, but do not enable it for production routing yet. Do not add
-EdgeJev or JevRouter. Reuse the existing pinned decision-service runtime after
-its exact-distribution response patch is deployed.
+**No-enable.** Keep the reviewed Switchboard adapter disabled by default. Do
+not expose it to clients or use it for production routing, activation, or
+execution. Do not add EdgeJev or JevRouter.
 
 The positive evidence is 32/32 provisional top-1 selections on the clear
 pre-labeled corpus, compared with 32/32 abstentions when the same unmodified
 natural-language requests are given to strict keyword search. The design also
 preserves the authorization boundary and leaves model health optional.
 
-The production no-go remains until all of these gates pass:
+The exact-distribution patch was deployed and the production-readiness gates
+were run against a frozen 104-case holdout (80 routable and 24 ambiguous,
+multi-capability, or out-of-catalog cases). Full per-case distributions are in
+[`benchmarks/capability-routing/holdout-result.json`](../benchmarks/capability-routing/holdout-result.json).
 
-1. Deploy the reviewed exact-distribution patch through decision-service's
-   pinned build and Ansible rollback path; verify complete normalized vectors at
-   the private HTTPS endpoint.
+| Gate | Observed | Decision |
+| --- | ---: | --- |
+| All-case top-1 >=90% | 79/104 (75.96%) | Fail |
+| Routable top-3 >=98% | 79/80 (98.75%) | Pass |
+| Confident errors <=2% | 25/104 (24.04%) | Fail |
+| Warm p95 <2 seconds | 0.402 seconds | Pass |
+| p95 with four concurrent callers <2 seconds | 1.605 seconds | Pass |
+
+Authorization filtering, audit redaction, malformed and unauthorized response
+rejection, timeout behavior, circuit breaking, and backend-down behavior pass
+the automated safety suite. Those controls contain failure; they do not repair
+the model's calibration. Only one of 24 cases expected to abstain fell below
+the 0.6 confidence threshold, so a no-action production shadow was not started.
+The accuracy and confident-error prerequisites had already failed, and sending
+real request text to the optional backend could not change the enable decision.
+
+Future reconsideration requires all of these gates to pass on a new,
+independently frozen corpus:
+
+1. Add an explicit abstain/out-of-domain design rather than interpreting a
+   forced finite choice as calibrated certainty.
 2. Run an independently labeled holdout of at least 100 requests, including at
    least 20 ambiguous, multi-capability, or out-of-catalog requests. Require at
    least 90% all-case top-1, 98% top-3 coverage for routable cases, and no more
@@ -230,9 +252,9 @@ The production no-go remains until all of these gates pass:
    `--parallel 1` cannot exhaust Switchboard's request budget.
 4. Repeat policy-redaction, unauthorized-choice, malformed-distribution,
    timeout, circuit-breaker, and backend-down tests against the deployed path.
-5. Run a shadow period with recommendation outcome/latency metrics but no
-   automatic activation or execution; review disagreements before enabling the
-   tool for clients.
+5. Only after the offline gates pass, run a shadow period with recommendation
+   outcome/latency metrics but no automatic activation or execution; review
+   disagreements before enabling the tool for clients.
 
 Rollback is configuration removal: omit `capability_recommender` and restart
 Switchboard. That removes the tool without changing any profile, authority, or

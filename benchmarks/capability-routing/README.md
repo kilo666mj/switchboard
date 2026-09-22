@@ -31,10 +31,10 @@ do not treat a greedy path score as a distribution.
 
 Report:
 
-- **Top-1 accuracy:** cases whose first result equals `expected`, divided by all
-  cases. An abstention is incorrect.
+- **Top-1 accuracy:** routable cases whose accepted first result equals
+  `expected`, plus expected-abstention cases that abstain, divided by all cases.
 - **Top-3 coverage:** cases whose expected capability appears in the first
-  three results, divided by all cases.
+  three results, divided by routable cases.
 - **Abstention rate:** lexical empty results, or model results whose normalized
   entropy confidence is below 0.6.
 - **Selective accuracy:** top-1 accuracy among non-abstained cases.
@@ -122,6 +122,47 @@ or normalized-entropy calibration under this protocol without inventing data.
 Rerun and append the raw distributions after the exact-distribution response
 extension is deployed.
 
+### Hard holdout qualification (final)
+
+After deploying the exact-distribution response, the frozen 104-case holdout
+was run one request at a time against the loopback-only endpoint. The complete
+validated distributions and per-case latencies are retained in
+[`holdout-result.json`](holdout-result.json), whose SHA-256 is
+`ce57c4cf2475973477b87ae31f2684b5b62f9ac1159b12819bce789758c45d1f`.
+There were no request or distribution-validation errors.
+
+| Production gate | Required | Observed | Result |
+| --- | ---: | ---: | --- |
+| All-case top-1 | >=90% | 79/104 (75.96%) | **Fail** |
+| Routable top-3 | >=98% | 79/80 (98.75%) | Pass |
+| Confident errors | <=2% | 25/104 (24.04%) | **Fail** |
+| Warm p95 | <2 s | 0.402 s | Pass |
+
+The model routed 78/80 clear cases at top-1. One taskboard case ranked the
+expected capability second at confidence 0.673; one tintwire case ranked it
+fourth at confidence 0.987. More importantly, only 1/24 ambiguous,
+multi-capability, and out-of-catalog cases fell below the 0.6 abstention
+threshold. The other 23 were confident errors, including scores near 1.0 on
+requests for which no catalog capability was appropriate. The exact vectors
+therefore reveal an out-of-domain calibration failure that the earlier clear
+corpus could not measure.
+
+Warm queue latency remained below the gate through four concurrent callers on
+the deployed single-slot server:
+
+| Concurrent callers | Median | p95 | Request errors |
+| ---: | ---: | ---: | ---: |
+| 1 | 0.395 s | 0.402 s | 0 |
+| 2 | 0.796 s | 0.813 s | 0 |
+| 4 | 1.592 s | 1.605 s | 0 |
+
+The final decision is **no-enable**. The adapter remains disabled by default.
+A production shadow period was not started because the holdout accuracy and
+confidence gates are prerequisites; exposing real request text to an optional
+backend after a decisive failed offline gate would add risk without changing
+the decision. The holdout itself was no-action and had no activation or
+execution path.
+
 ### Interpretation
 
 On these clear, in-domain requests, the local model adds a useful behavior that
@@ -144,8 +185,9 @@ dependency:
 - Keyword search remains deterministic, effectively free, and useful as the
   low-confidence fallback after a client supplies appropriate terms.
 
-The evidence supports a feature-gated shadow/pilot, not default-on routing.
-Promotion requires the full-distribution patch, a rerun that records entropy
-confidence, and a harder independently labeled holdout containing ambiguous and
-out-of-domain requests. Recommendation failures must continue to leave search,
-activation, and execution untouched.
+The clear-corpus evidence justified implementing and evaluating the
+disabled-by-default adapter. The later hard holdout does not justify a client
+or production shadow: accuracy and confident-error gates failed decisively.
+Any future attempt needs an explicit abstain/out-of-domain design and a new
+independently frozen corpus. Recommendation failures must continue to leave
+search, activation, and execution untouched.

@@ -1,0 +1,3141 @@
+{
+  "system": "parallel-decision",
+  "cases": 104,
+  "routable_cases": 80,
+  "expected_abstentions": 24,
+  "top_1_correct": 79,
+  "top_1_accuracy": 0.7596153846153846,
+  "top_3_covered": 79,
+  "top_3_coverage": 0.9875,
+  "abstentions": 1,
+  "abstention_rate": 0.009615384615384616,
+  "selective_accuracy": 0.7572815533980582,
+  "confident_errors": 25,
+  "confident_error_rate": 0.2403846153846154,
+  "request_errors": 0,
+  "cold_latency_ns": 4586462950,
+  "median_latency_ns": 394860156,
+  "p95_latency_ns": 401572311,
+  "results": [
+    {
+      "id": "hold-fleet-01",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "forgejo",
+        "rendercase",
+        "taskboard",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999778382936,
+      "probabilities": {
+        "fleetglass": 0.9999999979094918,
+        "forgejo": 1.9466829496544648e-10,
+        "parallaxd": 3.031429267932243e-10,
+        "rendercase": 6.634672658497777e-11,
+        "rilldns": 8.974635252291362e-12,
+        "taskboard": 6.569719754467257e-11,
+        "tintwire": 2.611983367186414e-11,
+        "wayminder": 1.4255587791508777e-9
+      },
+      "latency_ns": 4586462950
+    },
+    {
+      "id": "hold-fleet-02",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "forgejo",
+        "rendercase",
+        "taskboard",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999461993389,
+      "probabilities": {
+        "fleetglass": 0.9999999947854417,
+        "forgejo": 9.880586297575158e-10,
+        "parallaxd": 1.1818522765427823e-9,
+        "rendercase": 3.1561161852613205e-10,
+        "rilldns": 1.9107382243372233e-11,
+        "taskboard": 1.4368649250987037e-10,
+        "tintwire": 1.1972847650826569e-10,
+        "wayminder": 2.446513645569888e-9
+      },
+      "latency_ns": 401572311
+    },
+    {
+      "id": "hold-fleet-03",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "taskboard",
+        "forgejo",
+        "tintwire",
+        "parallaxd",
+        "rendercase",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998489148598,
+      "probabilities": {
+        "fleetglass": 0.9999999837289564,
+        "forgejo": 2.9449059378189083e-10,
+        "parallaxd": 1.3577108660699057e-10,
+        "rendercase": 1.3440241756229015e-10,
+        "rilldns": 4.093932418070818e-11,
+        "taskboard": 3.9598648715228813e-10,
+        "tintwire": 1.705857233246841e-10,
+        "wayminder": 1.5098867688041725e-8
+      },
+      "latency_ns": 381678947
+    },
+    {
+      "id": "hold-fleet-04",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "parallaxd",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "forgejo",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998039321184,
+      "probabilities": {
+        "fleetglass": 0.999999980007249,
+        "forgejo": 1.284563318901534e-9,
+        "parallaxd": 6.587921187867856e-9,
+        "rendercase": 3.4365944957695566e-9,
+        "rilldns": 3.969196003565085e-10,
+        "taskboard": 3.3882229677321383e-9,
+        "tintwire": 6.614850201903266e-10,
+        "wayminder": 4.237044408328235e-9
+      },
+      "latency_ns": 384119110
+    },
+    {
+      "id": "hold-fleet-05",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "rilldns",
+        "forgejo",
+        "tintwire",
+        "rendercase",
+        "taskboard"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999928892225913,
+      "probabilities": {
+        "fleetglass": 0.9999990691723948,
+        "forgejo": 2.7872240264202983e-8,
+        "parallaxd": 1.1060500324076667e-7,
+        "rendercase": 2.117252022115641e-8,
+        "rilldns": 5.957514795481301e-8,
+        "taskboard": 8.256480132813367e-9,
+        "tintwire": 2.7367102987312514e-8,
+        "wayminder": 6.759791103656998e-7
+      },
+      "latency_ns": 524500175
+    },
+    {
+      "id": "hold-fleet-06",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "rendercase",
+        "taskboard",
+        "forgejo",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999995705561197,
+      "probabilities": {
+        "fleetglass": 0.9999999531641945,
+        "forgejo": 1.508179267412972e-9,
+        "parallaxd": 8.069288451657646e-9,
+        "rendercase": 2.745243178973677e-9,
+        "rilldns": 9.265889840480018e-10,
+        "taskboard": 2.7274407525464963e-9,
+        "tintwire": 9.706847671919645e-10,
+        "wayminder": 2.9888380152776836e-8
+      },
+      "latency_ns": 385200687
+    },
+    {
+      "id": "hold-fleet-07",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "taskboard",
+        "forgejo",
+        "rendercase",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999623401277,
+      "probabilities": {
+        "fleetglass": 0.9999999964102557,
+        "forgejo": 3.2667654575184614e-10,
+        "parallaxd": 5.640945468244701e-10,
+        "rendercase": 1.842910123440976e-10,
+        "rilldns": 2.919802930611274e-11,
+        "taskboard": 3.948205359576355e-10,
+        "tintwire": 1.0018964094588178e-10,
+        "wayminder": 1.9904740006949555e-9
+      },
+      "latency_ns": 381596795
+    },
+    {
+      "id": "hold-fleet-08",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "rilldns",
+        "wayminder",
+        "parallaxd",
+        "rendercase",
+        "taskboard",
+        "forgejo",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999971850146062,
+      "probabilities": {
+        "fleetglass": 0.9999996564088555,
+        "forgejo": 2.902791159332071e-9,
+        "parallaxd": 3.3038951594251737e-8,
+        "rendercase": 2.000255278399921e-8,
+        "rilldns": 2.0652653921609904e-7,
+        "taskboard": 5.216286142973145e-9,
+        "tintwire": 1.2492371756981448e-9,
+        "wayminder": 7.46547865125541e-8
+      },
+      "latency_ns": 390160529
+    },
+    {
+      "id": "hold-fleet-09",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "forgejo",
+        "taskboard",
+        "rendercase",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999996352182026,
+      "probabilities": {
+        "fleetglass": 0.99999995916663,
+        "forgejo": 1.2250330979762197e-9,
+        "parallaxd": 1.8551522888613367e-9,
+        "rendercase": 6.827366578126888e-10,
+        "rilldns": 1.439814128305506e-10,
+        "taskboard": 7.344168744452786e-10,
+        "tintwire": 3.6141454397084486e-10,
+        "wayminder": 3.583063513203062e-8
+      },
+      "latency_ns": 385812512
+    },
+    {
+      "id": "hold-fleet-10",
+      "expected": "fleetglass",
+      "ranking": [
+        "fleetglass",
+        "wayminder",
+        "parallaxd",
+        "forgejo",
+        "tintwire",
+        "taskboard",
+        "rendercase",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999211548007,
+      "probabilities": {
+        "fleetglass": 0.9999999921646182,
+        "forgejo": 7.161381986818435e-10,
+        "parallaxd": 1.146275176900003e-9,
+        "rendercase": 3.5032373949261465e-10,
+        "rilldns": 3.1058266825930447e-11,
+        "taskboard": 3.696763144389771e-10,
+        "tintwire": 4.1510189404728145e-10,
+        "wayminder": 4.806808247077604e-9
+      },
+      "latency_ns": 386251678
+    },
+    {
+      "id": "hold-forgejo-01",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999973381493745,
+      "probabilities": {
+        "fleetglass": 1.2782613992335283e-10,
+        "forgejo": 0.9999996530152707,
+        "parallaxd": 3.4278378189932914e-7,
+        "rendercase": 8.454724510555e-11,
+        "rilldns": 7.07487548304101e-12,
+        "taskboard": 1.4147316802074622e-9,
+        "tintwire": 2.359946707634739e-10,
+        "wayminder": 2.330772710772346e-9
+      },
+      "latency_ns": 385493785
+    },
+    {
+      "id": "hold-forgejo-02",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999680337274,
+      "probabilities": {
+        "fleetglass": 9.167682209116516e-12,
+        "forgejo": 0.9999999968108626,
+        "parallaxd": 2.981218373761409e-9,
+        "rendercase": 2.3149221181354882e-12,
+        "rilldns": 9.453888515338719e-14,
+        "taskboard": 1.8621023066834602e-11,
+        "tintwire": 1.977129391395779e-12,
+        "wayminder": 1.7574373844550258e-10
+      },
+      "latency_ns": 385108156
+    },
+    {
+      "id": "hold-forgejo-03",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "wayminder",
+        "parallaxd",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "rendercase",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.999999989752504,
+      "probabilities": {
+        "fleetglass": 1.4339128829332897e-11,
+        "forgejo": 0.9999999990724533,
+        "parallaxd": 3.0469937655812176e-10,
+        "rendercase": 5.515080032504474e-13,
+        "rilldns": 2.5326182100205976e-13,
+        "taskboard": 2.8987737183718733e-10,
+        "tintwire": 1.0864110165638121e-12,
+        "wayminder": 3.1673932891537974e-10
+      },
+      "latency_ns": 380315527
+    },
+    {
+      "id": "hold-forgejo-04",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "wayminder",
+        "parallaxd",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "rendercase",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998952890954,
+      "probabilities": {
+        "fleetglass": 2.2008911807074755e-11,
+        "forgejo": 0.9999999887829342,
+        "parallaxd": 8.542046141197794e-11,
+        "rendercase": 2.119847676376471e-12,
+        "rilldns": 3.808064389647891e-13,
+        "taskboard": 7.019342667203308e-11,
+        "tintwire": 9.236519431720577e-12,
+        "wayminder": 1.1027705735891284e-8
+      },
+      "latency_ns": 385165263
+    },
+    {
+      "id": "hold-forgejo-05",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "wayminder",
+        "rendercase",
+        "parallaxd",
+        "taskboard",
+        "rilldns",
+        "fleetglass",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999985993799448,
+      "probabilities": {
+        "fleetglass": 4.808712378437963e-10,
+        "forgejo": 0.9999998339150321,
+        "parallaxd": 5.2549134602051475e-9,
+        "rendercase": 4.299404975698019e-8,
+        "rilldns": 3.3079674976195534e-9,
+        "taskboard": 4.35063857149431e-9,
+        "tintwire": 3.8806576502155624e-11,
+        "wayminder": 1.0965772074517278e-7
+      },
+      "latency_ns": 386454286
+    },
+    {
+      "id": "hold-forgejo-06",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999986965392329,
+      "probabilities": {
+        "fleetglass": 2.8321526227432287e-10,
+        "forgejo": 0.9999998405075103,
+        "parallaxd": 1.4440900310350795e-7,
+        "rendercase": 2.0349061718038025e-10,
+        "rilldns": 1.1080883820616651e-11,
+        "taskboard": 4.5475898925924915e-10,
+        "tintwire": 2.804125215417384e-11,
+        "wayminder": 1.410289956531115e-8
+      },
+      "latency_ns": 384140921
+    },
+    {
+      "id": "hold-forgejo-07",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "wayminder",
+        "parallaxd",
+        "fleetglass",
+        "taskboard",
+        "rendercase",
+        "tintwire",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999996810752134,
+      "probabilities": {
+        "fleetglass": 2.1548842399135766e-10,
+        "forgejo": 0.9999999646001695,
+        "parallaxd": 6.845469246167549e-9,
+        "rendercase": 9.726024388139678e-11,
+        "rilldns": 7.25035240380971e-12,
+        "taskboard": 1.6169904695809e-10,
+        "tintwire": 9.105730279258472e-12,
+        "wayminder": 2.806355749100367e-8
+      },
+      "latency_ns": 382385550
+    },
+    {
+      "id": "hold-forgejo-08",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "tintwire",
+        "rendercase",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999959548902726,
+      "probabilities": {
+        "fleetglass": 7.705108919036505e-10,
+        "forgejo": 0.9999994824806125,
+        "parallaxd": 4.0936848996997114e-7,
+        "rendercase": 2.4178265181184654e-8,
+        "rilldns": 1.7622700854544745e-10,
+        "taskboard": 1.2074999895310634e-8,
+        "tintwire": 5.26201527871169e-8,
+        "wayminder": 1.83307417161167e-8
+      },
+      "latency_ns": 387103011
+    },
+    {
+      "id": "hold-forgejo-09",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "wayminder",
+        "rendercase",
+        "parallaxd",
+        "taskboard",
+        "rilldns",
+        "fleetglass",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9998751986351596,
+      "probabilities": {
+        "fleetglass": 6.473077043478381e-8,
+        "forgejo": 0.9999798591509801,
+        "parallaxd": 0.000002420231580519476,
+        "rendercase": 0.0000056513108887028435,
+        "rilldns": 8.548064348033622e-8,
+        "taskboard": 4.891792882240493e-7,
+        "tintwire": 2.1387959965713115e-8,
+        "wayminder": 0.000011408527888538346
+      },
+      "latency_ns": 384030495
+    },
+    {
+      "id": "hold-forgejo-10",
+      "expected": "forgejo",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "taskboard",
+        "rendercase",
+        "rilldns",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999813769890317,
+      "probabilities": {
+        "fleetglass": 1.1164457830283936e-8,
+        "forgejo": 0.9999973202623336,
+        "parallaxd": 0.0000020301831732618517,
+        "rendercase": 9.828724525239006e-9,
+        "rilldns": 2.962352148687888e-9,
+        "taskboard": 1.026710985436116e-8,
+        "tintwire": 3.193085526107314e-10,
+        "wayminder": 6.150125401938236e-7
+      },
+      "latency_ns": 387751104
+    },
+    {
+      "id": "hold-parallaxd-01",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999862432601,
+      "probabilities": {
+        "fleetglass": 4.228609210676124e-12,
+        "forgejo": 4.487689782000642e-13,
+        "parallaxd": 0.9999999986804973,
+        "rendercase": 2.7947162776248124e-12,
+        "rilldns": 2.6330267792425327e-11,
+        "taskboard": 2.3833738770544005e-11,
+        "tintwire": 9.949104244331116e-13,
+        "wayminder": 1.2608715166411723e-9
+      },
+      "latency_ns": 383364528
+    },
+    {
+      "id": "hold-parallaxd-02",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999893860207,
+      "probabilities": {
+        "fleetglass": 3.6264055957867386e-12,
+        "forgejo": 4.743055986611529e-13,
+        "parallaxd": 0.9999999989976314,
+        "rendercase": 2.3212226388561198e-12,
+        "rilldns": 2.8013672950475145e-11,
+        "taskboard": 2.3785282747296608e-11,
+        "tintwire": 2.1122600175537562e-12,
+        "wayminder": 9.420355597250295e-10
+      },
+      "latency_ns": 385460230
+    },
+    {
+      "id": "hold-parallaxd-03",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "rendercase",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999257143128,
+      "probabilities": {
+        "fleetglass": 1.2684733373754494e-11,
+        "forgejo": 1.6078853618780562e-12,
+        "parallaxd": 0.9999999922599564,
+        "rendercase": 1.4571828006361003e-11,
+        "rilldns": 3.741516789629971e-10,
+        "taskboard": 7.400777849891517e-11,
+        "tintwire": 5.766103695682383e-12,
+        "wayminder": 7.257253852760709e-9
+      },
+      "latency_ns": 388225657
+    },
+    {
+      "id": "hold-parallaxd-04",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "rendercase",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999268336107,
+      "probabilities": {
+        "fleetglass": 4.71497967270959e-12,
+        "forgejo": 1.230238774705362e-12,
+        "parallaxd": 0.9999999923567054,
+        "rendercase": 2.2559820158849103e-11,
+        "rilldns": 2.0237319998313933e-10,
+        "taskboard": 9.010160604250128e-11,
+        "tintwire": 3.0620393139607502e-12,
+        "wayminder": 7.319252703486923e-9
+      },
+      "latency_ns": 385730401
+    },
+    {
+      "id": "hold-parallaxd-05",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999789397626,
+      "probabilities": {
+        "fleetglass": 2.8376871106596146e-12,
+        "forgejo": 3.9764567424472923e-13,
+        "parallaxd": 0.9999999979292096,
+        "rendercase": 2.6379417259105923e-12,
+        "rilldns": 3.06452987351328e-11,
+        "taskboard": 1.748129241906799e-11,
+        "tintwire": 1.3241375199773596e-12,
+        "wayminder": 2.0154664562185813e-9
+      },
+      "latency_ns": 388951985
+    },
+    {
+      "id": "hold-parallaxd-06",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "taskboard",
+        "rendercase",
+        "forgejo",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999145764044101,
+      "probabilities": {
+        "fleetglass": 1.1767709226092812e-7,
+        "forgejo": 2.333162608647739e-10,
+        "parallaxd": 0.9999854807249543,
+        "rendercase": 4.468578504601118e-9,
+        "rilldns": 9.02454310967956e-8,
+        "taskboard": 1.1247597792876797e-8,
+        "tintwire": 1.9870075511813943e-10,
+        "wayminder": 0.000014295204329110627
+      },
+      "latency_ns": 384033120
+    },
+    {
+      "id": "hold-parallaxd-07",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "rendercase",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999188149028,
+      "probabilities": {
+        "fleetglass": 3.8424675438421695e-12,
+        "forgejo": 6.489954460041812e-13,
+        "parallaxd": 0.9999999914334162,
+        "rendercase": 1.0795433898704222e-11,
+        "rilldns": 1.7393231150677718e-10,
+        "taskboard": 2.0251364647714922e-11,
+        "tintwire": 1.0373766643914711e-12,
+        "wayminder": 8.356075759689823e-9
+      },
+      "latency_ns": 385189235
+    },
+    {
+      "id": "hold-parallaxd-08",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "tintwire",
+        "wayminder",
+        "taskboard",
+        "rilldns",
+        "rendercase",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9981608194643323,
+      "probabilities": {
+        "fleetglass": 3.6537164275310537e-9,
+        "forgejo": 2.238871968747522e-9,
+        "parallaxd": 0.999568816448864,
+        "rendercase": 2.6242862012394608e-8,
+        "rilldns": 3.0152437950372294e-7,
+        "taskboard": 0.00000393944536391524,
+        "tintwire": 0.0004219835085239445,
+        "wayminder": 0.000004926937418309583
+      },
+      "latency_ns": 384147602
+    },
+    {
+      "id": "hold-parallaxd-09",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "fleetglass",
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "forgejo",
+        "tintwire"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9280237088048542,
+      "probabilities": {
+        "fleetglass": 0.03431186360606273,
+        "forgejo": 3.4441304351929057e-7,
+        "parallaxd": 0.9656688908375686,
+        "rendercase": 0.0000015444444029678975,
+        "rilldns": 0.000013514718013536612,
+        "taskboard": 5.526969027626455e-7,
+        "tintwire": 1.2912194523031604e-8,
+        "wayminder": 0.0000032763718113640023
+      },
+      "latency_ns": 385411978
+    },
+    {
+      "id": "hold-parallaxd-10",
+      "expected": "parallaxd",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999633263927,
+      "probabilities": {
+        "fleetglass": 4.775492917373238e-12,
+        "forgejo": 4.118434094064304e-13,
+        "parallaxd": 0.9999999962834063,
+        "rendercase": 2.1224289607989896e-12,
+        "rilldns": 3.30923308358375e-11,
+        "taskboard": 2.361738573701611e-11,
+        "tintwire": 1.4343115400713807e-12,
+        "wayminder": 3.651139599300422e-9
+      },
+      "latency_ns": 383605865
+    },
+    {
+      "id": "hold-rendercase-01",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "parallaxd",
+        "tintwire",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999997942387,
+      "probabilities": {
+        "fleetglass": 1.3432603384142322e-14,
+        "forgejo": 1.0809072143028796e-15,
+        "parallaxd": 5.621257243768956e-14,
+        "rendercase": 0.9999999999835272,
+        "rilldns": 1.6076409300748682e-11,
+        "taskboard": 8.054076475712475e-14,
+        "tintwire": 4.472229945783113e-14,
+        "wayminder": 2.0019913732106744e-13
+      },
+      "latency_ns": 382407020
+    },
+    {
+      "id": "hold-rendercase-02",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "taskboard",
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998434075223,
+      "probabilities": {
+        "fleetglass": 8.33225314664035e-12,
+        "forgejo": 9.228937442204541e-14,
+        "parallaxd": 1.7745036037562246e-11,
+        "rendercase": 0.9999999827813034,
+        "rilldns": 1.71442785902371e-8,
+        "taskboard": 3.363301593159789e-11,
+        "tintwire": 4.153153010347601e-12,
+        "wayminder": 1.046235562794594e-11
+      },
+      "latency_ns": 393754062
+    },
+    {
+      "id": "hold-rendercase-03",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "parallaxd",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999997802315728,
+      "probabilities": {
+        "fleetglass": 4.529649114036459e-12,
+        "forgejo": 1.845334278448722e-13,
+        "parallaxd": 4.004630209685086e-11,
+        "rendercase": 0.9999999754699503,
+        "rilldns": 2.4115132410055542e-8,
+        "taskboard": 8.367294846020155e-11,
+        "tintwire": 6.783490269635965e-11,
+        "wayminder": 2.1864905182968208e-10
+      },
+      "latency_ns": 383574628
+    },
+    {
+      "id": "hold-rendercase-04",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "taskboard",
+        "tintwire",
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.999968966865779,
+      "probabilities": {
+        "fleetglass": 4.457019685577481e-9,
+        "forgejo": 7.47067553976733e-11,
+        "parallaxd": 2.634439891868383e-8,
+        "rendercase": 0.9999951817459046,
+        "rilldns": 0.000004699743886011318,
+        "taskboard": 4.673253829383101e-8,
+        "tintwire": 2.8546164820816972e-8,
+        "wayminder": 1.235538083865292e-8
+      },
+      "latency_ns": 387455094
+    },
+    {
+      "id": "hold-rendercase-05",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "taskboard",
+        "wayminder",
+        "tintwire",
+        "parallaxd",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999383266268,
+      "probabilities": {
+        "fleetglass": 4.327583402709485e-12,
+        "forgejo": 7.320131324714869e-13,
+        "parallaxd": 4.7553505966274015e-12,
+        "rendercase": 0.9999999935790289,
+        "rilldns": 6.305884662804948e-9,
+        "taskboard": 7.019476621520227e-11,
+        "tintwire": 5.74320752195676e-12,
+        "wayminder": 2.933339316485475e-11
+      },
+      "latency_ns": 398794072
+    },
+    {
+      "id": "hold-rendercase-06",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "parallaxd",
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999928328268,
+      "probabilities": {
+        "fleetglass": 4.595067812745808e-13,
+        "forgejo": 2.286898662338277e-14,
+        "parallaxd": 2.335789980003358e-12,
+        "rendercase": 0.9999999993282795,
+        "rilldns": 6.654827240352842e-10,
+        "taskboard": 1.5479408109486072e-12,
+        "tintwire": 4.573592478228728e-13,
+        "wayminder": 1.414284812443281e-12
+      },
+      "latency_ns": 393533833
+    },
+    {
+      "id": "hold-rendercase-07",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "taskboard",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999997303214327,
+      "probabilities": {
+        "fleetglass": 2.6739822255606534e-10,
+        "forgejo": 2.56047512786943e-12,
+        "parallaxd": 7.531621659420722e-10,
+        "rendercase": 0.9999999698434716,
+        "rilldns": 2.853106102126668e-8,
+        "taskboard": 5.886510202764734e-11,
+        "tintwire": 7.082307865563207e-11,
+        "wayminder": 4.726582042835774e-10
+      },
+      "latency_ns": 393533924
+    },
+    {
+      "id": "hold-rendercase-08",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "taskboard",
+        "parallaxd",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9997660791476943,
+      "probabilities": {
+        "fleetglass": 2.998042026161678e-8,
+        "forgejo": 1.2047739608226628e-9,
+        "parallaxd": 8.770587199672459e-8,
+        "rendercase": 0.9999562614376905,
+        "rilldns": 0.00004315638992348076,
+        "taskboard": 3.959002912288087e-7,
+        "tintwire": 4.979601675944411e-9,
+        "wayminder": 6.240142695032745e-8
+      },
+      "latency_ns": 393614201
+    },
+    {
+      "id": "hold-rendercase-09",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999822719176,
+      "probabilities": {
+        "fleetglass": 1.4634100112986215e-12,
+        "forgejo": 7.752830888816753e-14,
+        "parallaxd": 1.652392282643815e-11,
+        "rendercase": 0.9999999982711736,
+        "rilldns": 1.6873290513391824e-9,
+        "taskboard": 8.118182327608259e-12,
+        "tintwire": 6.165512534294243e-12,
+        "wayminder": 9.148607203195319e-12
+      },
+      "latency_ns": 394165887
+    },
+    {
+      "id": "hold-rendercase-10",
+      "expected": "rendercase",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "parallaxd",
+        "tintwire",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999993504549,
+      "probabilities": {
+        "fleetglass": 5.169978756886342e-14,
+        "forgejo": 3.9430099435377116e-15,
+        "parallaxd": 1.2178085416597308e-13,
+        "rendercase": 0.9999999999454479,
+        "rilldns": 5.340441630294447e-11,
+        "taskboard": 2.366710072149818e-13,
+        "tintwire": 7.696783748119895e-14,
+        "wayminder": 6.566080144518169e-13
+      },
+      "latency_ns": 387529733
+    },
+    {
+      "id": "hold-rilldns-01",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999955426,
+      "probabilities": {
+        "fleetglass": 4.078070035405521e-16,
+        "forgejo": 7.760390131288399e-18,
+        "parallaxd": 2.1197232439092825e-15,
+        "rendercase": 7.53732183410712e-15,
+        "rilldns": 0.9999999999996916,
+        "taskboard": 2.493617351112608e-15,
+        "tintwire": 1.0197499135162831e-16,
+        "wayminder": 2.960879967854382e-13
+      },
+      "latency_ns": 397248600
+    },
+    {
+      "id": "hold-rilldns-02",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "rendercase",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999946046,
+      "probabilities": {
+        "fleetglass": 1.0651646834790942e-15,
+        "forgejo": 2.2885926953573776e-17,
+        "parallaxd": 4.8198482863533034e-15,
+        "rendercase": 2.300206229101301e-14,
+        "rilldns": 0.9999999999996281,
+        "taskboard": 2.3893828742277373e-14,
+        "tintwire": 3.804109669412373e-16,
+        "wayminder": 3.1852545232478137e-13
+      },
+      "latency_ns": 398714944
+    },
+    {
+      "id": "hold-rilldns-03",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999978293,
+      "probabilities": {
+        "fleetglass": 4.804224763642288e-16,
+        "forgejo": 5.91479384754835e-18,
+        "parallaxd": 1.4313031452594252e-15,
+        "rendercase": 6.03765423615956e-15,
+        "rilldns": 0.9999999999998539,
+        "taskboard": 2.268291552308588e-15,
+        "tintwire": 8.949382190751166e-17,
+        "wayminder": 1.3582993237113664e-13
+      },
+      "latency_ns": 386261686
+    },
+    {
+      "id": "hold-rilldns-04",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "parallaxd",
+        "taskboard",
+        "rendercase",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999997861521,
+      "probabilities": {
+        "fleetglass": 2.8490678240614054e-14,
+        "forgejo": 1.6201900631015397e-16,
+        "parallaxd": 2.9683948441125764e-13,
+        "rendercase": 1.2846195190276426e-13,
+        "rilldns": 0.9999999999829001,
+        "taskboard": 2.1404374854204157e-13,
+        "tintwire": 3.685285346411095e-15,
+        "wayminder": 1.6428294488387527e-11
+      },
+      "latency_ns": 392485817
+    },
+    {
+      "id": "hold-rilldns-05",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999984953,
+      "probabilities": {
+        "fleetglass": 3.189335009180871e-16,
+        "forgejo": 6.758772843981295e-18,
+        "parallaxd": 1.0649453019460454e-15,
+        "rendercase": 7.499006298739648e-15,
+        "rilldns": 0.9999999999999003,
+        "taskboard": 1.2148193116332064e-15,
+        "tintwire": 6.8609966512612e-17,
+        "wayminder": 8.962446805754207e-14
+      },
+      "latency_ns": 393509649
+    },
+    {
+      "id": "hold-rilldns-06",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "parallaxd",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999489478,
+      "probabilities": {
+        "fleetglass": 1.018872215325736e-14,
+        "forgejo": 4.850017349986279e-17,
+        "parallaxd": 3.5993821448616885e-14,
+        "rendercase": 4.705855862844841e-14,
+        "rilldns": 0.9999999999961342,
+        "taskboard": 2.8205085836232367e-14,
+        "tintwire": 9.511467431162146e-16,
+        "wayminder": 3.74341183050016e-12
+      },
+      "latency_ns": 392238188
+    },
+    {
+      "id": "hold-rilldns-07",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "parallaxd",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999995423714106,
+      "probabilities": {
+        "fleetglass": 5.323642672922982e-10,
+        "forgejo": 1.5162406207076297e-13,
+        "parallaxd": 4.0656406287556884e-10,
+        "rendercase": 1.6158126332409703e-10,
+        "rilldns": 0.9999999469866356,
+        "taskboard": 7.222974488387893e-10,
+        "tintwire": 2.5398865470028198e-11,
+        "wayminder": 5.116500679110006e-8
+      },
+      "latency_ns": 394237549
+    },
+    {
+      "id": "hold-rilldns-08",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "fleetglass",
+        "wayminder",
+        "taskboard",
+        "rendercase",
+        "parallaxd",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999312376889,
+      "probabilities": {
+        "fleetglass": 4.938418528701789e-9,
+        "forgejo": 4.1212315934271165e-13,
+        "parallaxd": 1.6720199761388182e-11,
+        "rendercase": 1.1994058440912371e-10,
+        "rilldns": 0.9999999930604995,
+        "taskboard": 3.8484343222679824e-10,
+        "tintwire": 1.3866417683405588e-12,
+        "wayminder": 1.4777790000176358e-9
+      },
+      "latency_ns": 392847377
+    },
+    {
+      "id": "hold-rilldns-09",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "parallaxd",
+        "rendercase",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999624853,
+      "probabilities": {
+        "fleetglass": 1.2075884031174618e-15,
+        "forgejo": 2.964665607962966e-17,
+        "parallaxd": 5.200757223951555e-14,
+        "rendercase": 2.3921462345090282e-14,
+        "rilldns": 0.9999999999971907,
+        "taskboard": 9.763437921881249e-15,
+        "tintwire": 8.746277454261714e-16,
+        "wayminder": 2.7214244312852172e-12
+      },
+      "latency_ns": 398262944
+    },
+    {
+      "id": "hold-rilldns-10",
+      "expected": "rilldns",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "rendercase",
+        "taskboard",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999999996343,
+      "probabilities": {
+        "fleetglass": 1.0431881754349373e-16,
+        "forgejo": 3.675256105801624e-18,
+        "parallaxd": 6.586289969832873e-16,
+        "rendercase": 3.434146642118476e-15,
+        "rilldns": 0.9999999999999771,
+        "taskboard": 7.351995048656534e-16,
+        "tintwire": 4.267213683668649e-17,
+        "wayminder": 1.797460495874461e-14
+      },
+      "latency_ns": 395775657
+    },
+    {
+      "id": "hold-taskboard-01",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "tintwire",
+        "forgejo",
+        "rendercase",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998731237829,
+      "probabilities": {
+        "fleetglass": 6.10547888529567e-12,
+        "forgejo": 2.0347364191547233e-13,
+        "parallaxd": 1.240019354780163e-13,
+        "rendercase": 1.71695636021236e-13,
+        "rilldns": 3.3668285250803284e-13,
+        "taskboard": 0.9999999861887092,
+        "tintwire": 2.860738407834811e-13,
+        "wayminder": 1.380406347925689e-8
+      },
+      "latency_ns": 389814354
+    },
+    {
+      "id": "hold-taskboard-02",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "rendercase",
+        "rilldns",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999013106082,
+      "probabilities": {
+        "fleetglass": 1.2060739432110194e-11,
+        "forgejo": 9.756299397600627e-13,
+        "parallaxd": 2.2475360364550076e-13,
+        "rendercase": 1.5818829368676703e-12,
+        "rilldns": 1.3399734738800596e-12,
+        "taskboard": 0.9999999894096027,
+        "tintwire": 1.8935042135630434e-12,
+        "wayminder": 1.05723206846329e-8
+      },
+      "latency_ns": 394193078
+    },
+    {
+      "id": "hold-taskboard-03",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "rendercase",
+        "forgejo",
+        "tintwire",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998465365153,
+      "probabilities": {
+        "fleetglass": 2.0756696358368233e-11,
+        "forgejo": 9.766818265582159e-13,
+        "parallaxd": 5.821975290517699e-13,
+        "rendercase": 1.3370477459452375e-12,
+        "rilldns": 1.831484585836274e-12,
+        "taskboard": 0.9999999831245957,
+        "tintwire": 6.767484678839746e-13,
+        "wayminder": 1.6849243493645447e-8
+      },
+      "latency_ns": 394860156
+    },
+    {
+      "id": "hold-taskboard-04",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "rendercase",
+        "rilldns",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999731887179,
+      "probabilities": {
+        "fleetglass": 3.7645338134491216e-12,
+        "forgejo": 2.6224638709570755e-13,
+        "parallaxd": 1.2256896040265847e-13,
+        "rendercase": 7.972722395746432e-13,
+        "rilldns": 6.238567046364781e-13,
+        "taskboard": 0.9999999973146732,
+        "tintwire": 3.292829758692098e-12,
+        "wayminder": 2.676463488089769e-9
+      },
+      "latency_ns": 394771191
+    },
+    {
+      "id": "hold-taskboard-05",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "tintwire",
+        "rilldns",
+        "rendercase",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999680542322825,
+      "probabilities": {
+        "fleetglass": 7.833818955244116e-10,
+        "forgejo": 7.561313367503007e-12,
+        "parallaxd": 3.574001032731666e-12,
+        "rendercase": 4.539263297368477e-11,
+        "rilldns": 1.352281864136951e-10,
+        "taskboard": 0.9999949684858938,
+        "tintwire": 4.3403457531874636e-10,
+        "wayminder": 0.000005030104933448098
+      },
+      "latency_ns": 395594809
+    },
+    {
+      "id": "hold-taskboard-06",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "rilldns",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999251203937,
+      "probabilities": {
+        "fleetglass": 5.586783769268503e-11,
+        "forgejo": 4.583331941673083e-12,
+        "parallaxd": 1.0191608761167007e-12,
+        "rendercase": 1.2477836373949271e-11,
+        "rilldns": 5.992026705970346e-12,
+        "taskboard": 0.9999999921097852,
+        "tintwire": 1.0792778044385153e-11,
+        "wayminder": 7.7994818876382e-9
+      },
+      "latency_ns": 395830437
+    },
+    {
+      "id": "hold-taskboard-07",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "forgejo",
+        "rendercase",
+        "tintwire",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999005614121902,
+      "probabilities": {
+        "fleetglass": 5.640794684188768e-7,
+        "forgejo": 4.2992592390271525e-8,
+        "parallaxd": 7.1487500019872275e-9,
+        "rendercase": 3.9235125182097284e-8,
+        "rilldns": 2.528900312539186e-7,
+        "taskboard": 0.9999831270747704,
+        "tintwire": 7.235611630569973e-9,
+        "wayminder": 0.000015959343650667392
+      },
+      "latency_ns": 396916575
+    },
+    {
+      "id": "hold-taskboard-08",
+      "expected": "taskboard",
+      "ranking": [
+        "forgejo",
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "rendercase",
+        "parallaxd",
+        "tintwire"
+      ],
+      "correct": false,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.6731171749583419,
+      "probabilities": {
+        "fleetglass": 2.2675776754736553e-7,
+        "forgejo": 0.5819450142906982,
+        "parallaxd": 1.8576852668506035e-9,
+        "rendercase": 2.987008703111736e-9,
+        "rilldns": 6.135728498580871e-9,
+        "taskboard": 0.4180486886010882,
+        "tintwire": 9.828528197717818e-10,
+        "wayminder": 0.000006058387170725649
+      },
+      "latency_ns": 396953643
+    },
+    {
+      "id": "hold-taskboard-09",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "forgejo",
+        "wayminder",
+        "tintwire",
+        "rilldns",
+        "fleetglass",
+        "parallaxd",
+        "rendercase"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9875694434707482,
+      "probabilities": {
+        "fleetglass": 0.0000050464881346110845,
+        "forgejo": 0.0033148098040656124,
+        "parallaxd": 4.968436437812949e-7,
+        "rendercase": 1.207301184753582e-7,
+        "rilldns": 0.000005131695962946116,
+        "taskboard": 0.9962945967236363,
+        "tintwire": 0.000028111371057726763,
+        "wayminder": 0.00035168634338052305
+      },
+      "latency_ns": 394946626
+    },
+    {
+      "id": "hold-taskboard-10",
+      "expected": "taskboard",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "forgejo",
+        "tintwire",
+        "rendercase",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9964079024044166,
+      "probabilities": {
+        "fleetglass": 3.066044792172366e-7,
+        "forgejo": 1.2342187098279587e-7,
+        "parallaxd": 1.862751078473678e-9,
+        "rendercase": 3.990386717664993e-8,
+        "rilldns": 1.9576238377231412e-7,
+        "taskboard": 0.9990640953583247,
+        "tintwire": 7.47199285828801e-8,
+        "wayminder": 0.0009351623663944352
+      },
+      "latency_ns": 398115540
+    },
+    {
+      "id": "hold-tintwire-01",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "wayminder",
+        "taskboard",
+        "parallaxd",
+        "rilldns",
+        "fleetglass",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999554039251,
+      "probabilities": {
+        "fleetglass": 2.5766237989844027e-11,
+        "forgejo": 6.305835817490721e-13,
+        "parallaxd": 1.0160318098367227e-9,
+        "rendercase": 2.4914805895963345e-13,
+        "rilldns": 4.849347638533463e-11,
+        "taskboard": 1.3685794660431927e-9,
+        "tintwire": 0.9999999956679131,
+        "wayminder": 1.8723362779017866e-9
+      },
+      "latency_ns": 396028186
+    },
+    {
+      "id": "hold-tintwire-02",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "parallaxd",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999607025273,
+      "probabilities": {
+        "fleetglass": 3.1931655113178514e-11,
+        "forgejo": 1.4900027768538216e-13,
+        "parallaxd": 1.0604152931386005e-11,
+        "rendercase": 2.232113817825332e-13,
+        "rilldns": 1.4995553352139655e-11,
+        "taskboard": 2.17363481928125e-9,
+        "tintwire": 0.9999999961339536,
+        "wayminder": 1.6345078560723047e-9
+      },
+      "latency_ns": 395650603
+    },
+    {
+      "id": "hold-tintwire-03",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "parallaxd",
+        "rilldns",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.999999991764481,
+      "probabilities": {
+        "fleetglass": 6.099214011173277e-13,
+        "forgejo": 9.459835895468896e-15,
+        "parallaxd": 4.957831559075316e-13,
+        "rendercase": 1.0889533488695587e-14,
+        "rilldns": 9.767205347663558e-14,
+        "taskboard": 5.149440314701949e-10,
+        "tintwire": 0.9999999992435997,
+        "wayminder": 2.4023247262175805e-10
+      },
+      "latency_ns": 397120042
+    },
+    {
+      "id": "hold-tintwire-04",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "parallaxd",
+        "taskboard",
+        "wayminder",
+        "rilldns",
+        "fleetglass",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9995165224437962,
+      "probabilities": {
+        "fleetglass": 9.169719126344806e-9,
+        "forgejo": 5.94821187123144e-10,
+        "parallaxd": 0.00008392953822900369,
+        "rendercase": 4.825268587099526e-9,
+        "rilldns": 1.6264942673222724e-7,
+        "taskboard": 0.000006981236250047354,
+        "tintwire": 0.999905935166042,
+        "wayminder": 0.0000029768202434816533
+      },
+      "latency_ns": 396821810
+    },
+    {
+      "id": "hold-tintwire-05",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "taskboard",
+        "wayminder",
+        "parallaxd",
+        "fleetglass",
+        "rilldns",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999961086726,
+      "probabilities": {
+        "fleetglass": 6.749012696206365e-13,
+        "forgejo": 2.957159052743804e-14,
+        "parallaxd": 1.5595220422174995e-12,
+        "rendercase": 9.030668022063807e-15,
+        "rilldns": 2.2470045293685975e-13,
+        "taskboard": 2.0940144055965386e-10,
+        "tintwire": 0.9999999996556976,
+        "wayminder": 1.3240328273649194e-10
+      },
+      "latency_ns": 397356740
+    },
+    {
+      "id": "hold-tintwire-06",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "parallaxd",
+        "rilldns",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999783815159,
+      "probabilities": {
+        "fleetglass": 3.239651107855898e-13,
+        "forgejo": 7.942434806242457e-15,
+        "parallaxd": 8.739582932243339e-14,
+        "rendercase": 3.630033379715343e-15,
+        "rilldns": 2.3971750640985752e-14,
+        "taskboard": 3.619671499383749e-10,
+        "tintwire": 0.9999999979037735,
+        "wayminder": 1.733812423328336e-9
+      },
+      "latency_ns": 397729555
+    },
+    {
+      "id": "hold-tintwire-07",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "parallaxd",
+        "rilldns",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999801739887,
+      "probabilities": {
+        "fleetglass": 3.731312669304692e-13,
+        "forgejo": 1.4067799294099654e-14,
+        "parallaxd": 8.123409834139361e-14,
+        "rendercase": 8.96644342903343e-15,
+        "rilldns": 7.841555894529278e-14,
+        "taskboard": 8.108348421764163e-10,
+        "tintwire": 0.999999998106273,
+        "wayminder": 1.0823361075760653e-9
+      },
+      "latency_ns": 397262446
+    },
+    {
+      "id": "hold-tintwire-08",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "parallaxd",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999872201196,
+      "probabilities": {
+        "fleetglass": 7.641352819166524e-12,
+        "forgejo": 1.4437574924797133e-14,
+        "parallaxd": 1.1589804623029335e-12,
+        "rendercase": 4.696503597091104e-14,
+        "rilldns": 5.786574337797293e-12,
+        "taskboard": 6.268885958419902e-10,
+        "tintwire": 0.9999999988087511,
+        "wayminder": 5.497119974886212e-10
+      },
+      "latency_ns": 394239082
+    },
+    {
+      "id": "hold-tintwire-09",
+      "expected": "tintwire",
+      "ranking": [
+        "rendercase",
+        "taskboard",
+        "rilldns",
+        "tintwire",
+        "wayminder",
+        "fleetglass",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9871030753906059,
+      "probabilities": {
+        "fleetglass": 0.0000010503033338802051,
+        "forgejo": 6.274884636073496e-7,
+        "parallaxd": 5.50754567591368e-7,
+        "rendercase": 0.9960048011483942,
+        "rilldns": 0.00013810470149634442,
+        "taskboard": 0.003832831441092052,
+        "tintwire": 0.000018498285151229057,
+        "wayminder": 0.0000035358775011658113
+      },
+      "latency_ns": 395016355
+    },
+    {
+      "id": "hold-tintwire-10",
+      "expected": "tintwire",
+      "ranking": [
+        "tintwire",
+        "wayminder",
+        "taskboard",
+        "parallaxd",
+        "rilldns",
+        "fleetglass",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999998296937744,
+      "probabilities": {
+        "fleetglass": 3.399132996748915e-11,
+        "forgejo": 2.503169609692578e-13,
+        "parallaxd": 1.0514138258203963e-9,
+        "rendercase": 1.1571448884326559e-12,
+        "rilldns": 6.40422842029724e-11,
+        "taskboard": 3.209551455277908e-9,
+        "tintwire": 0.999999981875309,
+        "wayminder": 1.376428457355231e-8
+      },
+      "latency_ns": 397999887
+    },
+    {
+      "id": "hold-wayminder-01",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "rendercase",
+        "forgejo",
+        "parallaxd",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999986816841,
+      "probabilities": {
+        "fleetglass": 2.8653707008024184e-12,
+        "forgejo": 6.724197478443942e-14,
+        "parallaxd": 4.206499107980481e-14,
+        "rendercase": 1.2476283026114995e-12,
+        "rilldns": 3.0135863554873393e-14,
+        "taskboard": 1.0697361745201872e-10,
+        "tintwire": 2.13694665237496e-12,
+        "wayminder": 0.9999999998866369
+      },
+      "latency_ns": 397063436
+    },
+    {
+      "id": "hold-wayminder-02",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "rendercase",
+        "fleetglass",
+        "forgejo",
+        "rilldns",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999971146077,
+      "probabilities": {
+        "fleetglass": 1.4174390824092508e-12,
+        "forgejo": 1.5743600809165836e-13,
+        "parallaxd": 6.806510784017612e-14,
+        "rendercase": 3.547125916731922e-12,
+        "rilldns": 8.494963898970398e-14,
+        "taskboard": 2.4392157731812947e-10,
+        "tintwire": 7.919422927899981e-12,
+        "wayminder": 0.9999999997428839
+      },
+      "latency_ns": 395486800
+    },
+    {
+      "id": "hold-wayminder-03",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "rendercase",
+        "fleetglass",
+        "forgejo",
+        "parallaxd",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999960471891,
+      "probabilities": {
+        "fleetglass": 4.372136331984058e-12,
+        "forgejo": 8.407376354626496e-13,
+        "parallaxd": 5.359221636621172e-13,
+        "rendercase": 1.558791289938917e-11,
+        "rilldns": 4.99214384931366e-13,
+        "taskboard": 3.1427505031699174e-10,
+        "tintwire": 1.7543822291478684e-11,
+        "wayminder": 0.9999999996463451
+      },
+      "latency_ns": 398642559
+    },
+    {
+      "id": "hold-wayminder-04",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "forgejo",
+        "rilldns",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999990488295,
+      "probabilities": {
+        "fleetglass": 9.366323904952192e-13,
+        "forgejo": 1.4054638799303155e-13,
+        "parallaxd": 2.0596393851474778e-14,
+        "rendercase": 9.231970655950755e-13,
+        "rilldns": 2.6435196938402884e-14,
+        "taskboard": 7.321898642354257e-11,
+        "tintwire": 5.062160325929026e-12,
+        "wayminder": 0.9999999999196714
+      },
+      "latency_ns": 402794278
+    },
+    {
+      "id": "hold-wayminder-05",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "parallaxd",
+        "rilldns",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999825611453,
+      "probabilities": {
+        "fleetglass": 1.7933503610024714e-11,
+        "forgejo": 1.24517190509459e-13,
+        "parallaxd": 1.0176303142257126e-12,
+        "rendercase": 1.3817872170248183e-11,
+        "rilldns": 7.46317015167872e-13,
+        "taskboard": 1.637200594539285e-9,
+        "tintwire": 2.4754347835102858e-11,
+        "wayminder": 0.9999999983044052
+      },
+      "latency_ns": 396968612
+    },
+    {
+      "id": "hold-wayminder-06",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "forgejo",
+        "fleetglass",
+        "rendercase",
+        "tintwire",
+        "rilldns",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999193538603415,
+      "probabilities": {
+        "fleetglass": 4.6859344711418353e-8,
+        "forgejo": 0.0000036970259207739416,
+        "parallaxd": 8.474628973705418e-9,
+        "rendercase": 2.922365807435512e-8,
+        "rilldns": 9.045679734263415e-9,
+        "taskboard": 0.000009194927743332431,
+        "tintwire": 1.1187897686560066e-8,
+        "wayminder": 0.9999870032551267
+      },
+      "latency_ns": 393652924
+    },
+    {
+      "id": "hold-wayminder-07",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "parallaxd",
+        "forgejo",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999447485272,
+      "probabilities": {
+        "fleetglass": 1.221076011242013e-10,
+        "forgejo": 8.641067847578194e-12,
+        "parallaxd": 1.3500149707236103e-11,
+        "rendercase": 4.459527860898221e-11,
+        "rilldns": 7.58725456684308e-12,
+        "taskboard": 4.8010448681037374e-9,
+        "tintwire": 5.99557677924316e-10,
+        "wayminder": 0.999999994402966
+      },
+      "latency_ns": 399314960
+    },
+    {
+      "id": "hold-wayminder-08",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "rendercase",
+        "fleetglass",
+        "forgejo",
+        "rilldns",
+        "parallaxd"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.999999998829172,
+      "probabilities": {
+        "fleetglass": 5.223605293448716e-13,
+        "forgejo": 3.350862000188314e-14,
+        "parallaxd": 1.4454601996849942e-14,
+        "rendercase": 6.079817096209291e-13,
+        "rilldns": 1.5659767250345908e-14,
+        "taskboard": 9.587754894605192e-11,
+        "tintwire": 3.3561358983679326e-12,
+        "wayminder": 0.9999999998995723
+      },
+      "latency_ns": 399183825
+    },
+    {
+      "id": "hold-wayminder-09",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "rendercase",
+        "fleetglass",
+        "parallaxd",
+        "forgejo",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999992766783,
+      "probabilities": {
+        "fleetglass": 9.379749580639392e-13,
+        "forgejo": 5.149783458515418e-14,
+        "parallaxd": 6.009646583176383e-14,
+        "rendercase": 1.338420476798126e-12,
+        "rilldns": 3.228607702173354e-14,
+        "taskboard": 5.6023845281748774e-11,
+        "tintwire": 2.0130583396925405e-12,
+        "wayminder": 0.9999999999395428
+      },
+      "latency_ns": 395851048
+    },
+    {
+      "id": "hold-wayminder-10",
+      "expected": "wayminder",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "parallaxd",
+        "forgejo",
+        "rilldns"
+      ],
+      "correct": true,
+      "top_3": true,
+      "abstained": false,
+      "confident_error": false,
+      "confidence": 0.9999999943029262,
+      "probabilities": {
+        "fleetglass": 7.969062905429578e-12,
+        "forgejo": 4.021688307979093e-13,
+        "parallaxd": 5.842522101106235e-13,
+        "rendercase": 5.55149415732581e-12,
+        "rilldns": 3.0733656706060166e-13,
+        "taskboard": 4.567410058904547e-10,
+        "tintwire": 4.7129050637619636e-11,
+        "wayminder": 0.9999999994813156
+      },
+      "latency_ns": 399199743
+    },
+    {
+      "id": "hold-ambiguous-01",
+      "expected": "",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "rilldns",
+        "tintwire",
+        "fleetglass",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9999989514063022,
+      "probabilities": {
+        "fleetglass": 1.0722185328981887e-9,
+        "forgejo": 3.2115091043685176e-10,
+        "parallaxd": 0.9999998777299409,
+        "rendercase": 7.231231147280243e-10,
+        "rilldns": 8.642167843769186e-9,
+        "taskboard": 2.7333841772940104e-8,
+        "tintwire": 1.1489827942771908e-9,
+        "wayminder": 8.302857398401068e-8
+      },
+      "latency_ns": 395896311
+    },
+    {
+      "id": "hold-ambiguous-02",
+      "expected": "",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "rendercase",
+        "fleetglass",
+        "rilldns",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9805592252983844,
+      "probabilities": {
+        "fleetglass": 1.84178712965286e-8,
+        "forgejo": 2.4151433693226552e-9,
+        "parallaxd": 4.5465488778977014e-10,
+        "rendercase": 1.8323730070302622e-7,
+        "rilldns": 5.863419852168926e-9,
+        "taskboard": 0.004742220413062728,
+        "tintwire": 0.0013578268422370452,
+        "wayminder": 0.9938997423563101
+      },
+      "latency_ns": 397073966
+    },
+    {
+      "id": "hold-ambiguous-03",
+      "expected": "",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "tintwire",
+        "parallaxd",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9999998335947682,
+      "probabilities": {
+        "fleetglass": 1.0084027180096869e-11,
+        "forgejo": 9.910807888430367e-13,
+        "parallaxd": 1.1207568523815324e-11,
+        "rendercase": 0.9999999818488984,
+        "rilldns": 1.731120282342027e-8,
+        "taskboard": 3.308565583624096e-10,
+        "tintwire": 1.176180242946145e-10,
+        "wayminder": 3.6914151620424496e-10
+      },
+      "latency_ns": 395714643
+    },
+    {
+      "id": "hold-ambiguous-04",
+      "expected": "",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "rilldns",
+        "taskboard",
+        "rendercase",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9999994908953906,
+      "probabilities": {
+        "fleetglass": 2.3566235102085866e-10,
+        "forgejo": 1.0948446155564886e-11,
+        "parallaxd": 0.9999999415663343,
+        "rendercase": 2.9978894402060105e-10,
+        "rilldns": 5.252428720336893e-9,
+        "taskboard": 1.1476248853563885e-9,
+        "tintwire": 4.0571480250708146e-11,
+        "wayminder": 5.144664078555963e-8
+      },
+      "latency_ns": 396171462
+    },
+    {
+      "id": "hold-ambiguous-05",
+      "expected": "",
+      "ranking": [
+        "forgejo",
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "rilldns",
+        "tintwire",
+        "rendercase",
+        "fleetglass"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9967540918463657,
+      "probabilities": {
+        "fleetglass": 0.000002095549209471406,
+        "forgejo": 0.9992527841992294,
+        "parallaxd": 0.0005602501847702695,
+        "rendercase": 0.000003831355979419574,
+        "rilldns": 0.000015722720302482437,
+        "taskboard": 0.000025497408991273242,
+        "tintwire": 0.000015352559601275232,
+        "wayminder": 0.00012446602191642256
+      },
+      "latency_ns": 395760377
+    },
+    {
+      "id": "hold-ambiguous-06",
+      "expected": "",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "rilldns",
+        "rendercase",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.999087795628005,
+      "probabilities": {
+        "fleetglass": 0.0000050828279804197075,
+        "forgejo": 1.387932818116091e-7,
+        "parallaxd": 0.9998161136699034,
+        "rendercase": 4.7517505378360193e-7,
+        "rilldns": 0.0000024514574614131466,
+        "taskboard": 0.000036382869220594277,
+        "tintwire": 1.4214266656104126e-7,
+        "wayminder": 0.0001392130644319742
+      },
+      "latency_ns": 396204553
+    },
+    {
+      "id": "hold-ambiguous-07",
+      "expected": "",
+      "ranking": [
+        "forgejo",
+        "taskboard",
+        "wayminder",
+        "tintwire",
+        "parallaxd",
+        "fleetglass",
+        "rilldns",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.8752666955243686,
+      "probabilities": {
+        "fleetglass": 0.000003142451932282638,
+        "forgejo": 0.9286725357863772,
+        "parallaxd": 0.00004072668454041766,
+        "rendercase": 6.900796612755288e-8,
+        "rilldns": 0.0000030432779032602997,
+        "taskboard": 0.07101996863233095,
+        "tintwire": 0.00012328044760360866,
+        "wayminder": 0.0001372337113461526
+      },
+      "latency_ns": 393449184
+    },
+    {
+      "id": "hold-ambiguous-08",
+      "expected": "",
+      "ranking": [
+        "tintwire",
+        "wayminder",
+        "fleetglass",
+        "taskboard",
+        "parallaxd",
+        "rilldns",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.6493753266563791,
+      "probabilities": {
+        "fleetglass": 0.004900639068624633,
+        "forgejo": 0.000003819164344883579,
+        "parallaxd": 0.00032023085155133434,
+        "rendercase": 4.1907231805993e-7,
+        "rilldns": 0.000009129619913804324,
+        "taskboard": 0.0007508482274337615,
+        "tintwire": 0.502650452378101,
+        "wayminder": 0.4913644616177126
+      },
+      "latency_ns": 388483955
+    },
+    {
+      "id": "hold-multi-01",
+      "expected": "",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "tintwire",
+        "taskboard",
+        "parallaxd",
+        "rendercase",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9999365522528756,
+      "probabilities": {
+        "fleetglass": 2.6899606833196953e-10,
+        "forgejo": 7.055191341810678e-14,
+        "parallaxd": 3.733049326849788e-8,
+        "rendercase": 6.082631571481562e-9,
+        "rilldns": 0.9999897216725914,
+        "taskboard": 3.0415494388314997e-7,
+        "tintwire": 4.845012867683821e-7,
+        "wayminder": 0.000009445988986544743
+      },
+      "latency_ns": 404974430
+    },
+    {
+      "id": "hold-multi-02",
+      "expected": "",
+      "ranking": [
+        "forgejo",
+        "taskboard",
+        "wayminder",
+        "parallaxd",
+        "tintwire",
+        "fleetglass",
+        "rilldns",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9907804758276051,
+      "probabilities": {
+        "fleetglass": 3.569733359627743e-8,
+        "forgejo": 0.9972416900110319,
+        "parallaxd": 1.2450009200469465e-7,
+        "rendercase": 1.1368151026497295e-8,
+        "rilldns": 2.5216147750350714e-8,
+        "taskboard": 0.0027294990528436984,
+        "tintwire": 5.4581538286786526e-8,
+        "wayminder": 0.00002855957286173301
+      },
+      "latency_ns": 397036776
+    },
+    {
+      "id": "hold-multi-03",
+      "expected": "",
+      "ranking": [
+        "rilldns",
+        "wayminder",
+        "taskboard",
+        "rendercase",
+        "parallaxd",
+        "fleetglass",
+        "tintwire",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.6728753086215609,
+      "probabilities": {
+        "fleetglass": 8.510205873845938e-10,
+        "forgejo": 8.012148176030028e-15,
+        "parallaxd": 3.845470608840604e-9,
+        "rendercase": 1.8474135289323672e-7,
+        "rilldns": 0.5802176595082198,
+        "taskboard": 8.533364735342503e-7,
+        "tintwire": 2.4697946467238416e-10,
+        "wayminder": 0.4197812974704751
+      },
+      "latency_ns": 396166673
+    },
+    {
+      "id": "hold-multi-04",
+      "expected": "",
+      "ranking": [
+        "parallaxd",
+        "wayminder",
+        "tintwire",
+        "taskboard",
+        "rilldns",
+        "rendercase",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9996184831550543,
+      "probabilities": {
+        "fleetglass": 2.9805982134379842e-9,
+        "forgejo": 2.7930452402386577e-10,
+        "parallaxd": 0.999931156887101,
+        "rendercase": 1.0280387388408217e-7,
+        "rilldns": 0.0000018571020068650077,
+        "taskboard": 0.000003135460702531592,
+        "tintwire": 0.00002508668695276934,
+        "wayminder": 0.000038657799460183126
+      },
+      "latency_ns": 399981015
+    },
+    {
+      "id": "hold-multi-05",
+      "expected": "",
+      "ranking": [
+        "fleetglass",
+        "rendercase",
+        "rilldns",
+        "parallaxd",
+        "forgejo",
+        "taskboard",
+        "wayminder",
+        "tintwire"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.8282001073332486,
+      "probabilities": {
+        "fleetglass": 0.884925251895817,
+        "forgejo": 0.0000011312580526932896,
+        "parallaxd": 0.000002196835808209792,
+        "rendercase": 0.11504999621745414,
+        "rilldns": 0.000019998879125132813,
+        "taskboard": 8.048280671183065e-7,
+        "tintwire": 2.6706209325962336e-7,
+        "wayminder": 3.530235824031203e-7
+      },
+      "latency_ns": 399685708
+    },
+    {
+      "id": "hold-multi-06",
+      "expected": "",
+      "ranking": [
+        "rendercase",
+        "wayminder",
+        "taskboard",
+        "rilldns",
+        "tintwire",
+        "parallaxd",
+        "fleetglass",
+        "forgejo"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.6888905457548256,
+      "probabilities": {
+        "fleetglass": 2.42142500285864e-8,
+        "forgejo": 3.391800155576027e-10,
+        "parallaxd": 6.275333640727812e-8,
+        "rendercase": 0.6523384416321316,
+        "rilldns": 0.00002705057507950051,
+        "taskboard": 0.000067374450369567,
+        "tintwire": 0.0000014267918608784483,
+        "wayminder": 0.3475656192437919
+      },
+      "latency_ns": 397201924
+    },
+    {
+      "id": "hold-multi-07",
+      "expected": "",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "tintwire",
+        "rilldns",
+        "fleetglass",
+        "rendercase",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9994273659813631,
+      "probabilities": {
+        "fleetglass": 3.285016009266191e-8,
+        "forgejo": 5.010491602676352e-9,
+        "parallaxd": 1.4935578405610955e-9,
+        "rendercase": 7.817269538144072e-9,
+        "rilldns": 1.4053029034202054e-7,
+        "taskboard": 0.9998824051207889,
+        "tintwire": 0.0000014009893974014354,
+        "wayminder": 0.00011600618804428448
+      },
+      "latency_ns": 398749448
+    },
+    {
+      "id": "hold-multi-08",
+      "expected": "",
+      "ranking": [
+        "forgejo",
+        "rendercase",
+        "rilldns",
+        "wayminder",
+        "parallaxd",
+        "taskboard",
+        "fleetglass",
+        "tintwire"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.8651928798513768,
+      "probabilities": {
+        "fleetglass": 1.4807525833530995e-7,
+        "forgejo": 0.91976904629327,
+        "parallaxd": 9.227683766360281e-7,
+        "rendercase": 0.08010376968961126,
+        "rilldns": 0.00011652099753159251,
+        "taskboard": 8.06962587091404e-7,
+        "tintwire": 1.2336633904469676e-8,
+        "wayminder": 0.00000877287673106954
+      },
+      "latency_ns": 403643757
+    },
+    {
+      "id": "hold-ood-01",
+      "expected": "",
+      "ranking": [
+        "wayminder",
+        "forgejo",
+        "tintwire",
+        "taskboard",
+        "fleetglass",
+        "rilldns",
+        "rendercase",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.886519885983399,
+      "probabilities": {
+        "fleetglass": 0.0001373006951780899,
+        "forgejo": 0.027804387521541095,
+        "parallaxd": 0.000001674251949204793,
+        "rendercase": 0.000011618043484025362,
+        "rilldns": 0.000022212972738957658,
+        "taskboard": 0.0004977539027377699,
+        "tintwire": 0.021422670990954813,
+        "wayminder": 0.950102381621416
+      },
+      "latency_ns": 394341092
+    },
+    {
+      "id": "hold-ood-02",
+      "expected": "",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "tintwire",
+        "forgejo",
+        "parallaxd",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.8779034299677155,
+      "probabilities": {
+        "fleetglass": 0.00045748927472318344,
+        "forgejo": 0.00004208935512812076,
+        "parallaxd": 0.000001556750000108822,
+        "rendercase": 7.543567800804069e-7,
+        "rilldns": 0.00021330792224208772,
+        "taskboard": 0.9318547717820148,
+        "tintwire": 0.00006425845552856574,
+        "wayminder": 0.06736577210358301
+      },
+      "latency_ns": 397313592
+    },
+    {
+      "id": "hold-ood-03",
+      "expected": "",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "forgejo",
+        "fleetglass",
+        "tintwire",
+        "rilldns",
+        "rendercase",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9950712067979746,
+      "probabilities": {
+        "fleetglass": 0.00013328178915485072,
+        "forgejo": 0.000343165556967654,
+        "parallaxd": 0.0000012066697966979487,
+        "rendercase": 0.000002055147163370832,
+        "rilldns": 0.000014196644474176014,
+        "taskboard": 0.0006012637042887935,
+        "tintwire": 0.0000521811078256577,
+        "wayminder": 0.9988526493803288
+      },
+      "latency_ns": 399554364
+    },
+    {
+      "id": "hold-ood-04",
+      "expected": "",
+      "ranking": [
+        "rendercase",
+        "rilldns",
+        "tintwire",
+        "fleetglass",
+        "wayminder",
+        "taskboard",
+        "forgejo",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.999047864140042,
+      "probabilities": {
+        "fleetglass": 0.00001727830749624478,
+        "forgejo": 0.000002408844920916827,
+        "parallaxd": 0.000002317303597060378,
+        "rendercase": 0.9998207092501122,
+        "rilldns": 0.00006778718670976555,
+        "taskboard": 0.000008575401807505537,
+        "tintwire": 0.00006727204891067023,
+        "wayminder": 0.00001365165644558531
+      },
+      "latency_ns": 403379667
+    },
+    {
+      "id": "hold-ood-05",
+      "expected": "",
+      "ranking": [
+        "wayminder",
+        "taskboard",
+        "fleetglass",
+        "tintwire",
+        "rilldns",
+        "parallaxd",
+        "forgejo",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.6441954020624014,
+      "probabilities": {
+        "fleetglass": 0.04893561705428224,
+        "forgejo": 0.000017858808423241463,
+        "parallaxd": 0.00006924202729106725,
+        "rendercase": 4.897639081034867e-7,
+        "rilldns": 0.0001543495562580786,
+        "taskboard": 0.23512917181757145,
+        "tintwire": 0.00141506731773288,
+        "wayminder": 0.714278203654533
+      },
+      "latency_ns": 397730086
+    },
+    {
+      "id": "hold-ood-06",
+      "expected": "",
+      "ranking": [
+        "taskboard",
+        "wayminder",
+        "fleetglass",
+        "rilldns",
+        "parallaxd",
+        "tintwire",
+        "rendercase",
+        "forgejo"
+      ],
+      "correct": true,
+      "top_3": false,
+      "abstained": true,
+      "confident_error": false,
+      "confidence": 0.5770115035457667,
+      "probabilities": {
+        "fleetglass": 0.04846135956786417,
+        "forgejo": 0.0000014082227319952969,
+        "parallaxd": 0.001215986456214028,
+        "rendercase": 0.0000036649619666583453,
+        "rilldns": 0.005877101863450245,
+        "taskboard": 0.5700483389618004,
+        "tintwire": 0.0008895532333345641,
+        "wayminder": 0.373502586732638
+      },
+      "latency_ns": 393047699
+    },
+    {
+      "id": "hold-ood-07",
+      "expected": "",
+      "ranking": [
+        "wayminder",
+        "forgejo",
+        "tintwire",
+        "fleetglass",
+        "taskboard",
+        "rilldns",
+        "parallaxd",
+        "rendercase"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.660316349750612,
+      "probabilities": {
+        "fleetglass": 0.0008068742472066798,
+        "forgejo": 0.19735598585431477,
+        "parallaxd": 0.00001683844859141226,
+        "rendercase": 0.0000034357292443691367,
+        "rilldns": 0.00013472318838443973,
+        "taskboard": 0.0007293569514011642,
+        "tintwire": 0.05328243231559067,
+        "wayminder": 0.7476703532652665
+      },
+      "latency_ns": 396830003
+    },
+    {
+      "id": "hold-ood-08",
+      "expected": "",
+      "ranking": [
+        "rendercase",
+        "forgejo",
+        "rilldns",
+        "wayminder",
+        "fleetglass",
+        "taskboard",
+        "tintwire",
+        "parallaxd"
+      ],
+      "correct": false,
+      "top_3": false,
+      "abstained": false,
+      "confident_error": true,
+      "confidence": 0.9749564888539213,
+      "probabilities": {
+        "fleetglass": 0.000027466020475509378,
+        "forgejo": 0.008465166450787454,
+        "parallaxd": 0.0000023150653981291887,
+        "rendercase": 0.9912150195507684,
+        "rilldns": 0.00019355404057237944,
+        "taskboard": 0.00002691713676898794,
+        "tintwire": 0.000003419138565497202,
+        "wayminder": 0.00006614259666360278
+      },
+      "latency_ns": 396311031
+    }
+  ]
+}
