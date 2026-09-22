@@ -178,6 +178,40 @@ func TestCallLimitValidation(t *testing.T) {
 	}
 }
 
+func TestCapabilityRecommenderConfigurationValidation(t *testing.T) {
+	valid := Config{
+		Transport: "http", Profile: "read", ToolPolicy: "read",
+		Profiles:     map[string][]string{"read": {"demo"}},
+		ToolPolicies: map[string]ToolPolicy{"read": {Version: "v1", Profile: "read", Tools: map[string]string{"demo_status": "allow"}}},
+		EgressPolicy: &EgressPolicy{},
+		CapabilityRecommender: &CapabilityRecommenderConfig{
+			Endpoint: "https://decision.example.com/v1/decision", APIKeyEnv: "DECISION_API_KEY", Model: "gemma-4-12b", TimeoutMS: 2_000, MaxCandidates: 64, MinConfidence: 0.6,
+		},
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(*CapabilityRecommenderConfig){
+		"http":          func(c *CapabilityRecommenderConfig) { c.Endpoint = "http://decision.example.com/v1/decision" },
+		"missing-path":  func(c *CapabilityRecommenderConfig) { c.Endpoint = "https://decision.example.com" },
+		"missing-model": func(c *CapabilityRecommenderConfig) { c.Model = "" },
+		"credential":    func(c *CapabilityRecommenderConfig) { c.APIKeyEnv = "not-valid" },
+		"timeout":       func(c *CapabilityRecommenderConfig) { c.TimeoutMS = 30_001 },
+		"candidates":    func(c *CapabilityRecommenderConfig) { c.MaxCandidates = 256 },
+		"confidence":    func(c *CapabilityRecommenderConfig) { c.MinConfidence = 1.1 },
+	} {
+		t.Run(name, func(t *testing.T) {
+			cfg := valid
+			recommender := *valid.CapabilityRecommender
+			cfg.CapabilityRecommender = &recommender
+			mutate(cfg.CapabilityRecommender)
+			if cfg.Validate() == nil {
+				t.Fatal("invalid recommender configuration accepted")
+			}
+		})
+	}
+}
+
 func TestOAuthConfigurationValidation(t *testing.T) {
 	valid := Config{
 		Transport: "http", Profile: "read", ToolPolicy: "pilot", Profiles: map[string][]string{"read": {"demo"}}, EgressPolicy: &EgressPolicy{},

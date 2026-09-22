@@ -25,6 +25,7 @@ import (
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/loader"
 	"github.com/kilo666mj/switchboard/internal/observability"
+	"github.com/kilo666mj/switchboard/internal/recommend"
 	"github.com/kilo666mj/switchboard/internal/sessions"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -89,6 +90,16 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("egress policy: %w", err)
 	}
+	var capabilityRecommender recommend.Service
+	if cfg.CapabilityRecommender != nil {
+		if err := egressPolicy.ValidateURL(cfg.CapabilityRecommender.Endpoint); err != nil {
+			return fmt.Errorf("capability recommender endpoint violates egress policy: %w", err)
+		}
+		capabilityRecommender, err = recommend.New(*cfg.CapabilityRecommender, egressPolicy.Transport())
+		if err != nil {
+			return fmt.Errorf("capability recommender: %w", err)
+		}
+	}
 	var oauthAuthenticator *auth.Authenticator
 	if cfg.OAuth != nil {
 		oauthAuthenticator, err = auth.New(ctx, *cfg.OAuth, egressPolicy)
@@ -111,7 +122,7 @@ func run() error {
 		}
 		defer closeCapabilities(capabilities)
 		newServer := func() (*mcp.Server, error) {
-			return gateway.NewWithMetrics(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(capabilities, cfg.Profiles[cfg.Profile]), metrics)
+			return gateway.NewWithMetricsAndRecommender(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(capabilities, cfg.Profiles[cfg.Profile]), metrics, capabilityRecommender)
 		}
 		server, err := newServer()
 		if err != nil {
@@ -138,7 +149,7 @@ func run() error {
 		slog.Warn("capability unavailable at startup", "name", failure.Name, "error", failure.Err)
 	}
 	newServer := func() (*mcp.Server, error) {
-		return gateway.NewWithMetrics(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(store.Snapshot(), cfg.Profiles[cfg.Profile]), metrics)
+		return gateway.NewWithMetricsAndRecommender(version, cfg.Profile, cfg.ToolPolicy, cfg.ToolPolicies[cfg.ToolPolicy], selectCapabilities(store.Snapshot(), cfg.Profiles[cfg.Profile]), metrics, capabilityRecommender)
 	}
 	if len(cfg.Clients) > 0 || cfg.OAuth != nil || cfg.CloudflareAccess != nil {
 		var sessionAuthenticator sessions.IdentityAuthenticator
@@ -150,7 +161,7 @@ func run() error {
 		case cloudflareAuthenticator != nil:
 			sessionAuthenticator = cloudflareAuthenticator
 		}
-		handler, err := sessions.NewWithAuthUnavailable(ctx, version, cfg, capabilities, unavailable, metrics, sessionAuthenticator)
+		handler, err := sessions.NewWithAuthUnavailableRecommender(ctx, version, cfg, capabilities, unavailable, metrics, sessionAuthenticator, capabilityRecommender)
 		if err != nil {
 			return err
 		}

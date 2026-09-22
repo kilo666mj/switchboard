@@ -1,0 +1,41 @@
+[
+  {"id":"fleet-01","request":"Which hosts currently have failing backup or certificate checks?","expected":"fleetglass","candidate_set":"full"},
+  {"id":"fleet-02","request":"What services and containers are known to run on pve06?","expected":"fleetglass","candidate_set":"full"},
+  {"id":"fleet-03","request":"Reconstruct infrastructure events around yesterday's deployment window.","expected":"fleetglass","candidate_set":"infrastructure"},
+  {"id":"fleet-04","request":"Which inventory collectors have stopped reporting fresh data?","expected":"fleetglass","candidate_set":"infrastructure"},
+
+  {"id":"forgejo-01","request":"Find the open repository issues assigned to me.","expected":"forgejo","candidate_set":"full"},
+  {"id":"forgejo-02","request":"Review pull request 13 and show its changed files.","expected":"forgejo","candidate_set":"full"},
+  {"id":"forgejo-03","request":"Why did the latest CI workflow fail? Show the job logs.","expected":"forgejo","candidate_set":"full"},
+  {"id":"forgejo-04","request":"Create a release from the latest repository tag.","expected":"forgejo","candidate_set":"full"},
+
+  {"id":"parallaxd-01","request":"Which availability monitors are currently down?","expected":"parallaxd","candidate_set":"infrastructure"},
+  {"id":"parallaxd-02","request":"Run an on-demand test of this monitor from an eligible probe.","expected":"parallaxd","candidate_set":"full"},
+  {"id":"parallaxd-03","request":"Show the active and recently resolved monitoring incidents.","expected":"parallaxd","candidate_set":"infrastructure"},
+  {"id":"parallaxd-04","request":"Validate a new HTTP monitor without saving it.","expected":"parallaxd","candidate_set":"full"},
+
+  {"id":"rendercase-01","request":"Publish this interactive HTML dashboard as a hosted artifact.","expected":"rendercase","candidate_set":"full"},
+  {"id":"rendercase-02","request":"List the hosted artifacts I can access.","expected":"rendercase","candidate_set":"full"},
+  {"id":"rendercase-03","request":"Create a revocable sharing link for the report.","expected":"rendercase","candidate_set":"full"},
+  {"id":"rendercase-04","request":"Get the design system I should use for a new artifact.","expected":"rendercase","candidate_set":"full"},
+
+  {"id":"rilldns-01","request":"Test what address api.internal resolves to.","expected":"rilldns","candidate_set":"infrastructure"},
+  {"id":"rilldns-02","request":"Plan an A record change without publishing it.","expected":"rilldns","candidate_set":"full"},
+  {"id":"rilldns-03","request":"List the managed DNS zones and their SOA revisions.","expected":"rilldns","candidate_set":"infrastructure"},
+  {"id":"rilldns-04","request":"Check DNSSEC, zone transfer, and blocklist refresh health.","expected":"rilldns","candidate_set":"full"},
+
+  {"id":"taskboard-01","request":"Show the queued work assigned to this agent.","expected":"taskboard","candidate_set":"coordination"},
+  {"id":"taskboard-02","request":"Start a durable task with a five-step checklist.","expected":"taskboard","candidate_set":"full"},
+  {"id":"taskboard-03","request":"Mark the current checklist item complete and begin the next one.","expected":"taskboard","candidate_set":"coordination"},
+  {"id":"taskboard-04","request":"Claim that stale task and renew its work lease.","expected":"taskboard","candidate_set":"full"},
+
+  {"id":"tintwire-01","request":"Show unread firing notifications in my messaging channels.","expected":"tintwire","candidate_set":"coordination"},
+  {"id":"tintwire-02","request":"Publish this status card to the operations channel.","expected":"tintwire","candidate_set":"full"},
+  {"id":"tintwire-03","request":"Acknowledge this notification and record the run activity.","expected":"tintwire","candidate_set":"coordination"},
+  {"id":"tintwire-04","request":"Open a durable run for externally visible messaging effects.","expected":"tintwire","candidate_set":"full"},
+
+  {"id":"wayminder-01","request":"Recall what we learned about the decision endpoint in this repository.","expected":"wayminder","candidate_set":"coordination"},
+  {"id":"wayminder-02","request":"Store this verified fact for future sessions.","expected":"wayminder","candidate_set":"full"},
+  {"id":"wayminder-03","request":"Replace the stale memory while preserving its history.","expected":"wayminder","candidate_set":"coordination"},
+  {"id":"wayminder-04","request":"Report the durable memory store's health and live counts.","expected":"wayminder","candidate_set":"full"}
+]

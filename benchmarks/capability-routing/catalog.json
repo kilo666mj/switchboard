@@ -1,0 +1,17 @@
+{
+  "candidate_sets": {
+    "full": ["fleetglass", "forgejo", "parallaxd", "rendercase", "rilldns", "taskboard", "tintwire", "wayminder"],
+    "infrastructure": ["fleetglass", "parallaxd", "rilldns"],
+    "coordination": ["taskboard", "tintwire", "wayminder"]
+  },
+  "capabilities": [
+    {"name":"fleetglass","title":"Fleetglass","description":"Inspect infrastructure inventory, hosts, services, checks, events, attention items, and collector freshness.","tags":["infrastructure","inventory","fleet"],"tools":["fleet overview","get host","list checks","search records","events between","what is stale"]},
+    {"name":"forgejo","title":"Forgejo","description":"Work with repositories, files, branches, issues, pull requests, reviews, releases, and CI Actions workflows, jobs, logs, artifacts, and checks.","tags":["git","repositories","issues","pull-requests","branches","releases","ci","actions","workflows","checks"],"tools":["search issues","get pull request","list changed files","workflow run logs","create release"]},
+    {"name":"parallaxd","title":"Parallaxd","description":"Inspect and manage availability monitors, probers, incidents, retained observations, and monitor catalogue revisions.","tags":["agents","orchestration","monitoring","availability"],"tools":["get status","get incidents","test monitor","validate monitor","monitor revisions"]},
+    {"name":"rendercase","title":"Rendercase","description":"Create, version, publish, retrieve, and share hosted HTML artifacts.","tags":["artifacts","html","publishing"],"tools":["get branding","list artifacts","publish artifact","share artifact","revoke share"]},
+    {"name":"rilldns","title":"RillDNS","description":"Inspect and manage DNS zones, records, resolution, DNSSEC, transfers, and blocklists through plan and confirmation workflows.","tags":["dns","network","infrastructure"],"tools":["list zones","list records","test resolution","plan changes","refresh status","blocklist config"]},
+    {"name":"taskboard","title":"Taskboard","description":"Track agent work as durable tasks, checklists, leased runs, and status events.","tags":["agents","tasks","checklists","status"],"tools":["list tasks","start task","claim task","update checklist","heartbeat run","complete task"]},
+    {"name":"tintwire","title":"Tintwire","description":"Read, publish, acknowledge, and resolve messaging notifications and record correlated activity runs.","tags":["messaging","notifications","channels"],"tools":["list channels","search notifications","publish notification","set state","start run","record run"]},
+    {"name":"wayminder","title":"Wayminder","description":"Recall, store, supersede, forget, and inspect durable cross-session agent memories.","tags":["memory","agents","knowledge"],"tools":["recall memory","remember fact","supersede memory","forget memory","memory status"]}
+  ]
+}

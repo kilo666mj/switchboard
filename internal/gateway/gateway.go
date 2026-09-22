@@ -7,6 +7,7 @@ import (
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
+	"github.com/kilo666mj/switchboard/internal/recommend"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -15,6 +16,10 @@ func New(version, profile, policyName string, policy config.ToolPolicy, capabili
 }
 
 func NewWithMetrics(version, profile, policyName string, policy config.ToolPolicy, capabilities []capability.Capability, metrics *observability.Metrics) (*mcp.Server, error) {
+	return NewWithMetricsAndRecommender(version, profile, policyName, policy, capabilities, metrics, nil)
+}
+
+func NewWithMetricsAndRecommender(version, profile, policyName string, policy config.ToolPolicy, capabilities []capability.Capability, metrics *observability.Metrics, recommender recommend.Service) (*mcp.Server, error) {
 	if policy.Version == "" {
 		return nil, fmt.Errorf("explicit tool policy is required")
 	}
@@ -42,7 +47,7 @@ func NewWithMetrics(version, profile, policyName string, policy config.ToolPolic
 			return nil, fmt.Errorf("register capability %s: %w", item.Name(), err)
 		}
 	}
-	registerCatalog(server, capabilities, policy)
+	registerCatalog(server, capabilities, policy, recommender)
 	registerExecutor(server, capabilities)
 	toolOwners := map[string]string{}
 	for _, item := range capabilities {

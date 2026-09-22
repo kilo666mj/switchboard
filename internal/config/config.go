@@ -12,21 +12,22 @@ import (
 )
 
 type Config struct {
-	Clients             map[string]Client       `json:"clients,omitempty"`
-	ToolPolicies        map[string]ToolPolicy   `json:"tool_policies,omitempty"`
-	EgressPolicy        *EgressPolicy           `json:"egress_policy,omitempty"`
-	OAuth               *OAuthConfig            `json:"oauth,omitempty"`
-	CloudflareAccess    *CloudflareAccessConfig `json:"cloudflare_access,omitempty"`
-	SessionLimit        int                     `json:"session_limit,omitempty"`
-	SessionIdleSeconds  int                     `json:"session_idle_seconds,omitempty"`
-	Listen              string                  `json:"listen"`
-	Transport           string                  `json:"transport"`
-	Profile             string                  `json:"profile"`
-	ToolPolicy          string                  `json:"tool_policy"`
-	CapabilityDir       string                  `json:"capability_dir"`
-	Profiles            map[string][]string     `json:"profiles"`
-	TrustedOrigins      []string                `json:"trusted_origins,omitempty"`
-	BehindLoopbackProxy bool                    `json:"behind_loopback_proxy,omitempty"`
+	Clients               map[string]Client            `json:"clients,omitempty"`
+	ToolPolicies          map[string]ToolPolicy        `json:"tool_policies,omitempty"`
+	EgressPolicy          *EgressPolicy                `json:"egress_policy,omitempty"`
+	OAuth                 *OAuthConfig                 `json:"oauth,omitempty"`
+	CloudflareAccess      *CloudflareAccessConfig      `json:"cloudflare_access,omitempty"`
+	CapabilityRecommender *CapabilityRecommenderConfig `json:"capability_recommender,omitempty"`
+	SessionLimit          int                          `json:"session_limit,omitempty"`
+	SessionIdleSeconds    int                          `json:"session_idle_seconds,omitempty"`
+	Listen                string                       `json:"listen"`
+	Transport             string                       `json:"transport"`
+	Profile               string                       `json:"profile"`
+	ToolPolicy            string                       `json:"tool_policy"`
+	CapabilityDir         string                       `json:"capability_dir"`
+	Profiles              map[string][]string          `json:"profiles"`
+	TrustedOrigins        []string                     `json:"trusted_origins,omitempty"`
+	BehindLoopbackProxy   bool                         `json:"behind_loopback_proxy,omitempty"`
 }
 
 func Load(path string) (Config, error) {
@@ -257,6 +258,11 @@ func (c Config) Validate() error {
 			return err
 		}
 	}
+	if c.CapabilityRecommender != nil {
+		if err := c.CapabilityRecommender.Validate(); err != nil {
+			return fmt.Errorf("capability_recommender: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -481,6 +487,47 @@ type CallLimits struct {
 	RequestsPerMinute int `json:"requests_per_minute,omitempty"`
 	Burst             int `json:"burst,omitempty"`
 	Concurrency       int `json:"concurrency,omitempty"`
+}
+
+// CapabilityRecommenderConfig connects the optional, recommendation-only
+// catalog tool to a finite-schema decision service. Credentials remain in an
+// environment variable and the endpoint remains subject to the egress policy.
+type CapabilityRecommenderConfig struct {
+	Endpoint      string  `json:"endpoint"`
+	APIKeyEnv     string  `json:"api_key_env,omitempty"`
+	Model         string  `json:"model"`
+	TimeoutMS     int     `json:"timeout_ms,omitempty"`
+	MaxCandidates int     `json:"max_candidates,omitempty"`
+	MinConfidence float64 `json:"min_confidence,omitempty"`
+}
+
+func (c CapabilityRecommenderConfig) Validate() error {
+	if err := validateHTTPSIdentifier(c.Endpoint, "endpoint", true); err != nil {
+		return err
+	}
+	if c.Model == "" || len(c.Model) > 256 || strings.TrimSpace(c.Model) != c.Model || strings.ContainsAny(c.Model, "\x00\r\n") {
+		return errors.New("model is required and must be a bounded single-line value")
+	}
+	if c.APIKeyEnv != "" {
+		for i, r := range c.APIKeyEnv {
+			if (r < 'A' || r > 'Z') && r != '_' && (i == 0 || r < '0' || r > '9') {
+				return errors.New("api_key_env must use uppercase environment-variable syntax")
+			}
+		}
+		if len(c.APIKeyEnv) > 128 {
+			return errors.New("api_key_env is too long")
+		}
+	}
+	if c.TimeoutMS < 0 || c.TimeoutMS > 30_000 {
+		return errors.New("timeout_ms must be between 0 and 30000")
+	}
+	if c.MaxCandidates < 0 || c.MaxCandidates > 255 {
+		return errors.New("max_candidates must be between 0 and 255")
+	}
+	if c.MinConfidence < 0 || c.MinConfidence > 1 {
+		return errors.New("min_confidence must be between 0 and 1")
+	}
+	return nil
 }
 
 func validateCallLimits(limits *CallLimits) error {

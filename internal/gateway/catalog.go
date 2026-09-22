@@ -9,6 +9,7 @@ import (
 	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
+	"github.com/kilo666mj/switchboard/internal/recommend"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -29,7 +30,29 @@ type searchOutput struct {
 	Total        int              `json:"total"`
 }
 
-func registerCatalog(server *mcp.Server, items []capability.Capability, policy config.ToolPolicy) {
+type recommendInput struct {
+	Request string `json:"request" jsonschema:"User request to route. It is sent only to the configured private decision service."`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum ranked candidates to return; defaults to 5, maximum 20."`
+}
+
+type rankedCapability struct {
+	catalogSummary
+	Probability float64 `json:"probability"`
+}
+
+type recommendOutput struct {
+	Choice        string             `json:"choice"`
+	Probabilities map[string]float64 `json:"probabilities"`
+	Confidence    float64            `json:"confidence"`
+	LowConfidence bool               `json:"low_confidence"`
+	Fallback      string             `json:"fallback,omitempty"`
+	Candidates    []rankedCapability `json:"candidates"`
+	Model         string             `json:"model,omitempty"`
+	Usage         recommend.Usage    `json:"usage"`
+	Timings       recommend.Timings  `json:"timings"`
+}
+
+func registerCatalog(server *mcp.Server, items []capability.Capability, policy config.ToolPolicy, recommenders ...recommend.Service) {
 	entries := make([]capability.Description, 0, len(items))
 	for _, item := range items {
 		d := capability.Description{Name: item.Name(), Tools: []capability.ToolSummary{}}
@@ -72,6 +95,61 @@ func registerCatalog(server *mcp.Server, items []capability.Capability, policy c
 			}
 			return nil, capability.Description{}, fmt.Errorf("capability is not available in the active profile")
 		})
+	if len(recommenders) == 0 || recommenders[0] == nil {
+		return
+	}
+	recommender := recommenders[0]
+	candidates := make([]recommend.Candidate, 0, len(entries))
+	byName := make(map[string]capability.Description, len(entries))
+	for _, entry := range entries {
+		tools := make([]string, 0, len(entry.Tools))
+		for _, tool := range entry.Tools {
+			tools = append(tools, tool.Name)
+		}
+		candidates = append(candidates, recommend.Candidate{Name: entry.Name, Title: entry.Title, Description: entry.Description, Tags: entry.Tags, Tools: tools})
+		byName[entry.Name] = entry
+	}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "capability_recommend",
+		Description: "Rank capabilities already allowed by the authenticated profile using the configured private decision service. Recommendation-only: never enables or executes a capability. If low_confidence is true, use capability_search or ask the user instead.",
+		Annotations: mcpkit.ReadOnly(false),
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input recommendInput) (*mcp.CallToolResult, recommendOutput, error) {
+		if input.Limit < 0 || input.Limit > 20 {
+			return nil, recommendOutput{}, fmt.Errorf("limit must be between 0 and 20")
+		}
+		if input.Limit == 0 {
+			input.Limit = 5
+		}
+		result, err := recommender.Recommend(ctx, input.Request, candidates)
+		if err != nil {
+			return nil, recommendOutput{}, err
+		}
+		ranked := make([]rankedCapability, 0, len(result.Probabilities))
+		for name, probability := range result.Probabilities {
+			entry, ok := byName[name]
+			if !ok {
+				return nil, recommendOutput{}, fmt.Errorf("recommender returned unavailable capability %q", name)
+			}
+			ranked = append(ranked, rankedCapability{catalogSummary: catalogSummary{Metadata: entry.Metadata, Name: entry.Name, ToolCount: len(entry.Tools)}, Probability: probability})
+		}
+		sort.Slice(ranked, func(i, j int) bool {
+			if ranked[i].Probability != ranked[j].Probability {
+				return ranked[i].Probability > ranked[j].Probability
+			}
+			return ranked[i].Name < ranked[j].Name
+		})
+		if len(ranked) > input.Limit {
+			ranked = ranked[:input.Limit]
+		}
+		output := recommendOutput{
+			Choice: result.Choice, Probabilities: result.Probabilities, Confidence: result.Confidence, LowConfidence: result.LowConfidence,
+			Candidates: ranked, Model: result.Model, Usage: result.Usage, Timings: result.Timings,
+		}
+		if result.LowConfidence {
+			output.Fallback = "capability_search"
+		}
+		return nil, output, nil
+	})
 }
 
 func searchCatalog(entries []capability.Description, input searchInput) (searchOutput, error) {

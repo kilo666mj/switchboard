@@ -129,6 +129,9 @@ Expose a small, stable tool set:
 
 - `capability_search`: search available capabilities using text and tags.
 - `capability_describe`: return metadata and downstream tool summaries.
+- `capability_recommend`: optionally rank the already-authorized catalog using
+  a private finite-schema model; it is advisory and falls back to search when
+  confidence is low.
 - `capability_enable`: activate a capability for the current session or an
   authorized persistent profile.
 - `capability_disable`: deactivate a capability.
@@ -139,6 +142,10 @@ Search and describe are read-only. Enable and disable mutate gateway state and
 must be annotated accordingly. Persistent profile changes are administrative
 operations and should require a revision or confirmation flow rather than being
 silently granted to an agent.
+
+Recommendation is also read-only. It must filter the catalog before sending it
+to the model, validate a complete exact distribution, and remain separate from
+activation and execution. See [Private capability recommendation](capability-recommendation.md).
 
 ## Native dynamic tools
 

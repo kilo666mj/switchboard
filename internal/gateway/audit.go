@@ -108,7 +108,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 
 func isGatewayTool(name string) bool {
 	switch name {
-	case "capability_search", "capability_describe", "capability_execute", "capability_enable", "capability_disable":
+	case "capability_search", "capability_describe", "capability_recommend", "capability_execute", "capability_enable", "capability_disable":
 		return true
 	default:
 		return false

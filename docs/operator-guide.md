@@ -200,6 +200,12 @@ summaries also include input schemas; native schemas remain available through
 `tools/list`. Both discovery tools are read-only and preserve
 the existing profile-selected tools and stateless transport.
 
+An optional `capability_recommend` tool can rank that same policy-filtered
+catalog through a private finite-schema decision service. It is recommendation
+only and never enables or executes a capability. The complete backend contract,
+confidence fallback, privacy boundary, and configuration are documented in
+[Private capability recommendation](capability-recommendation.md).
+
 REST, MCP, and module manifests accept optional `title`, `description`, `tags`,
 and `risk` fields. Risk is `read_only`, `mutating`, `destructive`, or `unknown`;
 omitted risk is displayed as `unknown`. It is operator-authored information,

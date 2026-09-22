@@ -12,12 +12,17 @@ import (
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
+	"github.com/kilo666mj/switchboard/internal/recommend"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // NewSession creates an isolated tool registry. The caller owns authentication,
 // expiry, and session IDs; allowed capabilities have already been profile-filtered.
 func NewSession(version, id, identity string, policy config.Client, toolPolicy config.ToolPolicy, controller *CallController, metrics *observability.Metrics, allowed []capability.Capability) (*mcp.Server, error) {
+	return NewSessionWithRecommender(version, id, identity, policy, toolPolicy, controller, metrics, allowed, nil)
+}
+
+func NewSessionWithRecommender(version, id, identity string, policy config.Client, toolPolicy config.ToolPolicy, controller *CallController, metrics *observability.Metrics, allowed []capability.Capability, recommender recommend.Service) (*mcp.Server, error) {
 	if policy.ToolPolicy == "" || toolPolicy.Version == "" {
 		return nil, fmt.Errorf("explicit tool policy is required")
 	}
@@ -61,7 +66,7 @@ func NewSession(version, id, identity string, policy config.Client, toolPolicy c
 		}
 		visibleCount := 0
 		for _, tool := range describer.Describe().Tools {
-			if toolOwners[tool.Name] != "" || tool.Name == "capability_search" || tool.Name == "capability_describe" || tool.Name == "capability_execute" || tool.Name == "capability_enable" || tool.Name == "capability_disable" {
+			if toolOwners[tool.Name] != "" || tool.Name == "capability_search" || tool.Name == "capability_describe" || tool.Name == "capability_recommend" || tool.Name == "capability_execute" || tool.Name == "capability_enable" || tool.Name == "capability_disable" {
 				return nil, fmt.Errorf("duplicate or reserved tool %q", tool.Name)
 			}
 			toolOwners[tool.Name] = item.Name()
@@ -99,7 +104,7 @@ func NewSession(version, id, identity string, policy config.Client, toolPolicy c
 		}
 	}
 	if policy.Discover {
-		registerCatalog(server, exposed, toolPolicy)
+		registerCatalog(server, exposed, toolPolicy, recommender)
 	}
 	if policy.Execute {
 		registerExecutor(server, exposed)

@@ -23,6 +23,7 @@ import (
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/observability"
+	"github.com/kilo666mj/switchboard/internal/recommend"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -74,6 +75,7 @@ type Handler struct {
 	toolPolicies  map[string]config.ToolPolicy
 	metrics       *observability.Metrics
 	authenticator IdentityAuthenticator
+	recommender   recommend.Service
 	controllers   map[string]identityController
 	transport     *mcp.StreamableHTTPHandler
 	protected     http.Handler
@@ -98,13 +100,17 @@ func NewWithAuth(ctx context.Context, version string, cfg config.Config, items [
 // subset of a valid configuration. Temporarily unavailable capabilities can be
 // added later with AddCapability; new sessions will then include them.
 func NewWithAuthUnavailable(ctx context.Context, version string, cfg config.Config, items []capability.Capability, unavailable []string, metrics *observability.Metrics, authenticator IdentityAuthenticator) (*Handler, error) {
+	return NewWithAuthUnavailableRecommender(ctx, version, cfg, items, unavailable, metrics, authenticator, nil)
+}
+
+func NewWithAuthUnavailableRecommender(ctx context.Context, version string, cfg config.Config, items []capability.Capability, unavailable []string, metrics *observability.Metrics, authenticator IdentityAuthenticator, recommender recommend.Service) (*Handler, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	if (cfg.OAuth == nil && cfg.CloudflareAccess == nil) != (authenticator == nil) {
 		return nil, errors.New("identity-provider configuration and authenticator must be supplied together")
 	}
-	h := &Handler{entries: map[string]*entry{}, limit: cfg.SessionLimit, idle: time.Duration(cfg.SessionIdleSeconds) * time.Second, version: version, cfg: cfg, capabilities: map[string]capability.Capability{}, unavailable: map[string]bool{}, profiles: cfg.Profiles, toolPolicies: cfg.ToolPolicies, metrics: metrics, authenticator: authenticator, controllers: map[string]identityController{}}
+	h := &Handler{entries: map[string]*entry{}, limit: cfg.SessionLimit, idle: time.Duration(cfg.SessionIdleSeconds) * time.Second, version: version, cfg: cfg, capabilities: map[string]capability.Capability{}, unavailable: map[string]bool{}, profiles: cfg.Profiles, toolPolicies: cfg.ToolPolicies, metrics: metrics, authenticator: authenticator, recommender: recommender, controllers: map[string]identityController{}}
 	for _, name := range unavailable {
 		h.unavailable[name] = true
 	}
@@ -588,7 +594,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		controllerKey = client.name + "\x00" + client.binding
 		controller = h.identityControllerFor(controllerKey, client.policy, controllerPolicy, now)
 	}
-	server, err := gateway.NewSession(h.version, id, client.name, client.policy, client.toolPolicy, controller, h.metrics, allowed)
+	server, err := gateway.NewSessionWithRecommender(h.version, id, client.name, client.policy, client.toolPolicy, controller, h.metrics, allowed, h.recommender)
 	if err != nil {
 		h.mu.Unlock()
 		http.Error(w, "session configuration error", 500)
