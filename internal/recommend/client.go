@@ -104,7 +104,7 @@ func New(cfg config.CapabilityRecommenderConfig, transport http.RoundTripper) (*
 	if cfg.APIKeyEnv != "" {
 		apiKey = os.Getenv(cfg.APIKeyEnv)
 		if apiKey == "" {
-			return nil, fmt.Errorf("capability recommender credential environment variable %s is empty", cfg.APIKeyEnv)
+			return nil, errors.New("capability recommender credential environment variable is empty")
 		}
 	}
 	if transport == nil {
