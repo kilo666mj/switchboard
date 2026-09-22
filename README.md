@@ -108,9 +108,12 @@ provider's `static_client_allowlist` to enable only named entries from
 migration switch.
 
 OAuth and Cloudflare identities map verified subjects and groups to profiles
-and exact tool policies. Cloudflare Access is optional and is not enabled by
-default. Its origin must reject bypass traffic, and the trusted proxy must strip
-client-supplied assertion headers before injecting its verified assertion.
+and exact tool policies. Cloudflare Access service tokens map their signed
+`common_name` to an exact `service_token:<client-id>.access` policy subject and
+cannot inherit human group policies. Cloudflare Access is optional and is not
+enabled by default. Its origin must reject bypass traffic, and the trusted proxy
+must strip client-supplied assertion headers before injecting its verified
+assertion.
 
 Inspect effective authorization without changing it:
 

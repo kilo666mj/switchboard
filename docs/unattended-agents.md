@@ -30,8 +30,19 @@ data, and tool results can still contain prompt injection.
 
 Give every scheduled job or trust domain its own credential and identity. Do not
 share the legacy `/mcp` bearer route between workloads. Prefer short-lived OAuth
-workload identities when the provider supports them; otherwise enable only the
-required named static clients with `static_client_allowlist`.
+workload identities when the provider supports them. An ingress protected by
+Cloudflare Access may instead use one service token per workload. Switchboard
+matches that token's signed Client ID as the exact policy subject
+`service_token:<client-id>.access`; it never trusts the unsigned client-ID
+request header and does not grant human group entitlements to service tokens.
+Otherwise enable only the required named static clients with
+`static_client_allowlist`.
+
+For a Cloudflare migration, keep the origin private and expose a separate
+Access-protected hostname through Cloudflare Tunnel. The existing private
+static-client route may remain as an explicitly allowlisted rollback during a
+canary period. Remove the shared credential after every workload has a distinct
+service token and cross-principal session isolation has been verified.
 
 Use a minimal profile and exact tool decisions. Disable discovery and activation
 unless the job genuinely needs them, and apply identity and exact-tool limits:

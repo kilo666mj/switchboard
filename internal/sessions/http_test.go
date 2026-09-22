@@ -144,6 +144,30 @@ func request(t *testing.T, api *httptest.Server, method, token, id, body string)
 	return resp.StatusCode, resp.Header.Get(sessionHeader), string(data)
 }
 
+func requestWithAccessAssertion(t *testing.T, api *httptest.Server, assertion, id, body string) (int, string, string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, api.URL, strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(auth.CloudflareAccessJWTHeader, assertion)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	if id != "" {
+		req.Header.Set(sessionHeader, id)
+	}
+	resp, err := api.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp.StatusCode, resp.Header.Get(sessionHeader), string(data)
+}
+
 const initialize = `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"test"}}}`
 
 func TestIdentityCapacityExpiryAndReconnect(t *testing.T) {
@@ -382,6 +406,28 @@ func (fakeAccessAuthenticator) WriteError(w http.ResponseWriter, _ error) {
 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 }
 
+type fakeServiceAccessAuthenticator struct{}
+
+func (fakeServiceAccessAuthenticator) Authenticate(r *http.Request) (auth.Principal, error) {
+	identity := ""
+	switch r.Header.Get(auth.CloudflareAccessJWTHeader) {
+	case "signed-agent-a":
+		identity = "cloudflare_access:service_token:agent-a.access"
+	case "signed-agent-b":
+		identity = "cloudflare_access:service_token:agent-b.access"
+	default:
+		return auth.Principal{}, auth.ErrInvalidAccessAssertion
+	}
+	return auth.Principal{
+		Identity: identity, Source: "cloudflare_access", PolicyName: "agents",
+		Policy: config.Client{Profile: "empty", ToolPolicy: "test-empty", Execute: true},
+	}, nil
+}
+
+func (fakeServiceAccessAuthenticator) WriteError(w http.ResponseWriter, _ error) {
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+}
+
 func TestCloudflareAccessSessionAuthenticationDoesNotRequireAuthorizationHeader(t *testing.T) {
 	handler := &Handler{authenticator: fakeAccessAuthenticator{}}
 	request := httptest.NewRequest(http.MethodPost, "/mcp/sessions", nil)
@@ -399,6 +445,37 @@ func TestCloudflareAccessSessionAuthenticationDoesNotRequireAuthorizationHeader(
 	request.Header.Set("Authorization", "Bearer unexpected")
 	if _, err := handler.authenticate(request); !errors.Is(err, auth.ErrAmbiguousCredential) {
 		t.Fatalf("ambiguous credential error = %v", err)
+	}
+}
+
+func TestCloudflareAccessServiceTokenSessionsArePrincipalBound(t *testing.T) {
+	cfg := config.Config{
+		Transport: "http", Profile: "empty", Profiles: map[string][]string{"empty": {}},
+		CloudflareAccess: &config.CloudflareAccessConfig{
+			TeamDomain: "https://example.cloudflareaccess.com", Audience: "access-audience",
+			Policies: map[string]config.OAuthPolicy{
+				"agents": {Version: "v1", Subjects: []string{"service_token:agent-a.access", "service_token:agent-b.access"}, Profile: "empty", Execute: true},
+			},
+		},
+	}
+	secureTestConfig(&cfg)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	handler, err := NewWithAuth(ctx, "test", cfg, nil, nil, fakeServiceAccessAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handler.Close()
+	api := httptest.NewServer(handler)
+	defer api.Close()
+
+	status, id, body := requestWithAccessAssertion(t, api, "signed-agent-a", "", initialize)
+	if status != http.StatusOK || id == "" {
+		t.Fatalf("initialize = %d %s", status, body)
+	}
+	status, _, _ = requestWithAccessAssertion(t, api, "signed-agent-b", id, `{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	if status != http.StatusNotFound {
+		t.Fatalf("cross-principal session status = %d", status)
 	}
 }
 

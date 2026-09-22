@@ -18,6 +18,8 @@ import (
 
 const CloudflareAccessJWTHeader = "Cf-Access-Jwt-Assertion"
 
+const cloudflareServiceTokenSubjectPrefix = "service_token:"
+
 var (
 	ErrMissingAccessAssertion = errors.New("Cloudflare Access assertion is required")
 	ErrInvalidAccessAssertion = errors.New("invalid Cloudflare Access assertion")
@@ -67,11 +69,15 @@ func (a *CloudflareAccessAuthenticator) Authenticate(r *http.Request) (Principal
 		return Principal{}, ErrInvalidAccessAssertion
 	}
 	verified, err := a.verifier.Verify(r.Context(), values[0])
-	if err != nil || !safeIdentity(verified.Subject) {
+	if err != nil {
 		return Principal{}, ErrInvalidAccessAssertion
 	}
-	var tokenType, email string
-	if json.Unmarshal(verified.Claims["type"], &tokenType) != nil || tokenType != "app" || json.Unmarshal(verified.Claims["email"], &email) != nil || !safeIdentity(email) {
+	var tokenType string
+	if json.Unmarshal(verified.Claims["type"], &tokenType) != nil || tokenType != "app" {
+		return Principal{}, ErrInvalidAccessAssertion
+	}
+	policySubject, identity, serviceToken, err := cloudflareIdentity(verified)
+	if err != nil {
 		return Principal{}, ErrInvalidAccessAssertion
 	}
 	groups, err := stringSetClaim(verified.Claims["groups"], false)
@@ -91,7 +97,10 @@ func (a *CloudflareAccessAuthenticator) Authenticate(r *http.Request) (Principal
 			groups[group] = true
 		}
 	}
-	matches := EvaluatePolicies(verified.Subject, groups, nil, a.cfg.Policies, false).Matches
+	if serviceToken && len(groups) != 0 {
+		return Principal{}, ErrInvalidAccessAssertion
+	}
+	matches := EvaluatePolicies(policySubject, groups, nil, a.cfg.Policies, false).Matches
 	if len(matches) == 0 {
 		return Principal{}, ErrPolicyDenied
 	}
@@ -100,10 +109,37 @@ func (a *CloudflareAccessAuthenticator) Authenticate(r *http.Request) (Principal
 	}
 	sort.Slice(matches, func(i, j int) bool { return matches[i].Name < matches[j].Name })
 	return Principal{
-		Identity: "cloudflare_access:" + verified.Subject, Source: "cloudflare_access",
+		Identity: identity, Source: "cloudflare_access",
 		PolicyName: matches[0].Name, Policy: matches[0].Policy.Client(), PolicyMatches: matches,
 		Composed: a.cfg.PolicyMode == config.IdentityPolicyModeComposed,
 	}, nil
+}
+
+func cloudflareIdentity(verified verifiedToken) (policySubject, identity string, serviceToken bool, err error) {
+	commonNamePresent := claimPresent(verified.Claims["common_name"])
+	if verified.Subject != "" {
+		var email string
+		if !safeIdentity(verified.Subject) || commonNamePresent || json.Unmarshal(verified.Claims["email"], &email) != nil || !safeIdentity(email) {
+			return "", "", false, ErrInvalidAccessAssertion
+		}
+		return verified.Subject, "cloudflare_access:" + verified.Subject, false, nil
+	}
+	if claimPresent(verified.Claims["email"]) {
+		return "", "", false, ErrInvalidAccessAssertion
+	}
+	var commonName string
+	if !commonNamePresent || json.Unmarshal(verified.Claims["common_name"], &commonName) != nil {
+		return "", "", false, ErrInvalidAccessAssertion
+	}
+	policySubject = cloudflareServiceTokenSubjectPrefix + commonName
+	if !safeIdentity(policySubject) || strings.TrimSpace(commonName) != commonName || !strings.HasSuffix(commonName, ".access") {
+		return "", "", false, ErrInvalidAccessAssertion
+	}
+	return policySubject, "cloudflare_access:" + policySubject, true, nil
+}
+
+func claimPresent(raw json.RawMessage) bool {
+	return len(raw) != 0 && string(raw) != "null"
 }
 
 func (a *CloudflareAccessAuthenticator) WriteError(w http.ResponseWriter, err error) {
