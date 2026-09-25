@@ -117,7 +117,7 @@ func TestCloudflareAccessMapsVerifiedIdentityAndGroups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if principal.Identity != "cloudflare_access:subject-1" || principal.Source != "cloudflare_access" || principal.PolicyName != "people" || principal.Policy.Profile != "workstation" {
+	if principal.Identity != "cloudflare_access:subject-1" || principal.Source != "cloudflare_access" || principal.PolicyName != "people" || principal.Policy.Profile != "workstation" || principal.ServiceToken {
 		t.Fatalf("principal = %+v", principal)
 	}
 }
@@ -136,7 +136,7 @@ func TestCloudflareAccessMapsVerifiedServiceTokenIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if principal.Identity != "cloudflare_access:service_token:"+clientID || principal.Source != "cloudflare_access" || principal.PolicyName != "agent" || principal.Policy.Profile != "agents" {
+	if principal.Identity != "cloudflare_access:service_token:"+clientID || principal.Source != "cloudflare_access" || principal.PolicyName != "agent" || principal.Policy.Profile != "agents" || !principal.ServiceToken {
 		t.Fatalf("principal = %+v", principal)
 	}
 }

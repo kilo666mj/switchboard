@@ -23,9 +23,14 @@ import (
 
 var validName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
-const delegatedOAuthSubjectHeader = "X-Switchboard-OAuth-Subject"
+const (
+	delegatedOAuthSubjectHeader  = "X-Switchboard-OAuth-Subject"
+	delegatedAccessSubjectHeader = "X-Switchboard-Access-Subject"
+)
 
 type delegatedOAuthSubjectContextKey struct{}
+
+type delegatedAccessSubjectContextKey struct{}
 
 type Manifest struct {
 	Title               string                  `json:"title,omitempty"`
@@ -43,8 +48,11 @@ type Manifest struct {
 	IncludeTools        []string                `json:"include_tools,omitempty"`
 	AnnotationRules     []AnnotationRule        `json:"annotation_rules,omitempty"`
 	ForwardOAuthSubject bool                    `json:"forward_oauth_subject,omitempty"`
-	ForwardSessionID    bool                    `json:"forward_session_id,omitempty"`
-	InsecureSkipVerify  bool                    `json:"insecure_skip_verify,omitempty"`
+	// ForwardAccessSubject sends a person's verified Cloudflare Access
+	// identity in its own header, separate from OAuth subjects.
+	ForwardAccessSubject bool `json:"forward_cloudflare_access_subject,omitempty"`
+	ForwardSessionID     bool `json:"forward_session_id,omitempty"`
+	InsecureSkipVerify   bool `json:"insecure_skip_verify,omitempty"`
 }
 
 type AnnotationRule struct {
@@ -73,14 +81,16 @@ type HeaderValue struct {
 }
 
 type Capability struct {
-	metadata            capability.Metadata
-	name                string
-	session             *mcp.ClientSession
-	tools               []toolBinding
-	forwardOAuthSubject bool
-	forwardSessionID    bool
-	oauthSubject        string
-	sessionID           string
+	metadata             capability.Metadata
+	name                 string
+	session              *mcp.ClientSession
+	tools                []toolBinding
+	forwardOAuthSubject  bool
+	forwardAccessSubject bool
+	forwardSessionID     bool
+	oauthSubject         string
+	accessSubject        string
+	sessionID            string
 }
 
 type toolBinding struct {
@@ -140,8 +150,8 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	}
 	headers := make(http.Header, len(manifest.Headers))
 	for name, value := range manifest.Headers {
-		if strings.EqualFold(name, delegatedOAuthSubjectHeader) {
-			return nil, fmt.Errorf("header %q is reserved for verified OAuth subject forwarding", delegatedOAuthSubjectHeader)
+		if strings.EqualFold(name, delegatedOAuthSubjectHeader) || strings.EqualFold(name, delegatedAccessSubjectHeader) {
+			return nil, fmt.Errorf("header %q is reserved for verified subject forwarding", name)
 		}
 		if strings.EqualFold(name, requestmeta.CorrelationIDHeader) {
 			return nil, fmt.Errorf("header %q is reserved for gateway correlation", requestmeta.CorrelationIDHeader)
@@ -158,6 +168,9 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	if manifest.ForwardOAuthSubject && headers.Get("Authorization") == "" && manifest.OAuth == nil {
 		return nil, errors.New("forward_oauth_subject requires authenticated upstream requests")
 	}
+	if manifest.ForwardAccessSubject && headers.Get("Authorization") == "" && manifest.OAuth == nil {
+		return nil, errors.New("forward_cloudflare_access_subject requires authenticated upstream requests")
+	}
 	if manifest.ForwardSessionID && headers.Get("Authorization") == "" && manifest.OAuth == nil {
 		return nil, errors.New("forward_session_id requires authenticated upstream requests")
 	}
@@ -168,7 +181,7 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	if policy != nil {
 		transport = policy.Transport()
 	}
-	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject}
+	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject}
 	if manifest.OAuth != nil {
 		if headers.Get("Authorization") != "" {
 			return nil, errors.New("set only one of Authorization header and oauth_client_credentials")
@@ -226,7 +239,7 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 		_ = session.Close()
 		return nil, fmt.Errorf("%s MCP offered no selected tools", manifest.Name)
 	}
-	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardSessionID: manifest.ForwardSessionID, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject, forwardSessionID: manifest.ForwardSessionID, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
 }
 
 func matchAnnotations(name string, rules []AnnotationRule) (*mcp.ToolAnnotations, error) {
@@ -314,6 +327,18 @@ func (c *Capability) BindOAuthSubject(subject string) (capability.Capability, er
 	return &bound, nil
 }
 
+func (c *Capability) BindAccessSubject(subject string) (capability.Capability, error) {
+	if !c.forwardAccessSubject {
+		return c, nil
+	}
+	if !strings.HasPrefix(subject, "cloudflare_access:") || strings.HasPrefix(subject, "cloudflare_access:service_token:") || len(subject) > 1024 || strings.ContainsAny(subject, "\r\n") {
+		return nil, errors.New("invalid delegated Cloudflare Access subject")
+	}
+	bound := *c
+	bound.accessSubject = subject
+	return &bound, nil
+}
+
 func (c *Capability) BindSessionIdentity(sessionID string) (capability.Capability, error) {
 	if !c.forwardSessionID {
 		return c, nil
@@ -327,10 +352,13 @@ func (c *Capability) BindSessionIdentity(sessionID string) (capability.Capabilit
 }
 
 func (c *Capability) callContext(ctx context.Context) context.Context {
-	if !c.forwardOAuthSubject || c.oauthSubject == "" {
-		return ctx
+	if c.forwardOAuthSubject && c.oauthSubject != "" {
+		ctx = context.WithValue(ctx, delegatedOAuthSubjectContextKey{}, c.oauthSubject)
 	}
-	return context.WithValue(ctx, delegatedOAuthSubjectContextKey{}, c.oauthSubject)
+	if c.forwardAccessSubject && c.accessSubject != "" {
+		ctx = context.WithValue(ctx, delegatedAccessSubjectContextKey{}, c.accessSubject)
+	}
+	return ctx
 }
 
 func (c *Capability) Register(server *mcp.Server) error {
@@ -389,10 +417,11 @@ func rejectRedirect(_ *http.Request, _ []*http.Request) error {
 }
 
 type headerTransport struct {
-	base                http.RoundTripper
-	headers             http.Header
-	host                string
-	forwardOAuthSubject bool
+	base                 http.RoundTripper
+	headers              http.Header
+	host                 string
+	forwardOAuthSubject  bool
+	forwardAccessSubject bool
 }
 
 func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -404,6 +433,7 @@ func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error
 		}
 	}
 	clone.Header.Del(delegatedOAuthSubjectHeader)
+	clone.Header.Del(delegatedAccessSubjectHeader)
 	clone.Header.Del(requestmeta.CorrelationIDHeader)
 	if correlationID := requestmeta.CorrelationID(request.Context()); correlationID != "" {
 		clone.Header.Set(requestmeta.CorrelationIDHeader, correlationID)
@@ -411,6 +441,11 @@ func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error
 	if t.forwardOAuthSubject {
 		if subject, ok := request.Context().Value(delegatedOAuthSubjectContextKey{}).(string); ok && subject != "" {
 			clone.Header.Set(delegatedOAuthSubjectHeader, subject)
+		}
+	}
+	if t.forwardAccessSubject {
+		if subject, ok := request.Context().Value(delegatedAccessSubjectContextKey{}).(string); ok && subject != "" {
+			clone.Header.Set(delegatedAccessSubjectHeader, subject)
 		}
 	}
 	if t.host != "" {

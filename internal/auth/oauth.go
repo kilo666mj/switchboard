@@ -116,6 +116,9 @@ type Principal struct {
 	Policy        config.Client
 	PolicyMatches []PolicyMatch
 	Composed      bool
+	// ServiceToken marks a Cloudflare Access service-token workload rather
+	// than a person.
+	ServiceToken bool
 }
 
 type PolicyMatch struct {

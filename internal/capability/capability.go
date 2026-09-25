@@ -28,6 +28,14 @@ type OAuthSubjectBinder interface {
 	BindOAuthSubject(string) (Capability, error)
 }
 
+// AccessSubjectBinder returns a session-local capability view that can pass
+// the verified Cloudflare Access identity of a person to a specifically
+// configured upstream. Service tokens, OAuth and static clients are never
+// bound through this interface.
+type AccessSubjectBinder interface {
+	BindAccessSubject(string) (Capability, error)
+}
+
 // SessionIdentityBinder returns a session-local capability view that may pass
 // Switchboard's server-issued inbound session identity to an opted-in upstream.
 type SessionIdentityBinder interface {

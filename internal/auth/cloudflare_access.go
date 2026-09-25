@@ -111,7 +111,7 @@ func (a *CloudflareAccessAuthenticator) Authenticate(r *http.Request) (Principal
 	return Principal{
 		Identity: identity, Source: "cloudflare_access",
 		PolicyName: matches[0].Name, Policy: matches[0].Policy.Client(), PolicyMatches: matches,
-		Composed: a.cfg.PolicyMode == config.IdentityPolicyModeComposed,
+		Composed: a.cfg.PolicyMode == config.IdentityPolicyModeComposed, ServiceToken: serviceToken,
 	}, nil
 }
 

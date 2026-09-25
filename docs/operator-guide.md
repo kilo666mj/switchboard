@@ -146,6 +146,16 @@ the configured Switchboard service client, map it to an existing principal,
 and continue enforcing its own authorization. See
 [the reviewed remaining-capability policies](remaining-capability-policies.md).
 
+Cloudflare Access people are forwarded separately. An authenticated upstream
+can set `"forward_cloudflare_access_subject": true` to receive the verified
+`cloudflare_access:<sub>` identity of a person in
+`X-Switchboard-Access-Subject`. Service-token workloads, OAuth and static
+clients never populate it, and manifests cannot set it. It uses its own header
+so an upstream that trusts OAuth subjects can never receive an Access identity
+by mistake. The same trust rule applies: accept it only from the configured
+Switchboard credential and keep enforcing the upstream's own authorization.
+Taskboard uses it to record tasks captured through `task_create` as the person.
+
 When an upstream MCP omits or incorrectly applies behavior annotations, an
 operator may supply `annotation_rules`. Each rule contains one or more exact
 tool-name prefixes and a complete MCP `annotations` object. When rules are

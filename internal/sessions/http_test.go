@@ -419,7 +419,7 @@ func (fakeServiceAccessAuthenticator) Authenticate(r *http.Request) (auth.Princi
 		return auth.Principal{}, auth.ErrInvalidAccessAssertion
 	}
 	return auth.Principal{
-		Identity: identity, Source: "cloudflare_access", PolicyName: "agents",
+		Identity: identity, Source: "cloudflare_access", PolicyName: "agents", ServiceToken: true,
 		Policy: config.Client{Profile: "empty", ToolPolicy: "test-empty", Execute: true},
 	}, nil
 }
@@ -441,6 +441,9 @@ func TestCloudflareAccessSessionAuthenticationDoesNotRequireAuthorizationHeader(
 	}
 	if client.oauthSubject != "" {
 		t.Fatal("Cloudflare Access identity was marked for OAuth subject forwarding")
+	}
+	if client.accessSubject != "cloudflare_access:subject-alice" {
+		t.Fatalf("Cloudflare Access person subject = %q", client.accessSubject)
 	}
 	request.Header.Set("Authorization", "Bearer unexpected")
 	if _, err := handler.authenticate(request); !errors.Is(err, auth.ErrAmbiguousCredential) {
@@ -714,5 +717,92 @@ func TestOAuthStaticClientMigrationSwitch(t *testing.T) {
 	client, err := handler.authenticate(request)
 	if err != nil || client.binding != "static:migration" || client.oauthSubject != "" {
 		t.Fatalf("migration authentication = %+v, %v", client, err)
+	}
+}
+
+func TestCloudflareAccessServiceTokenIsNotForwardedAsPerson(t *testing.T) {
+	handler := &Handler{authenticator: fakeServiceAccessAuthenticator{}}
+	request := httptest.NewRequest(http.MethodPost, "/mcp/sessions", nil)
+	request.Header.Set(auth.CloudflareAccessJWTHeader, "signed-agent-a")
+	client, err := handler.authenticate(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.accessSubject != "" || client.oauthSubject != "" {
+		t.Fatalf("service token was marked for subject forwarding: %+v", client)
+	}
+}
+
+type accessSubjectCapability struct{ subject string }
+
+func (c *accessSubjectCapability) Name() string { return "subject" }
+
+func (c *accessSubjectCapability) Describe() capability.Description {
+	return capability.Description{Name: c.Name(), Tools: []capability.ToolSummary{{Name: "subject_current"}}}
+}
+
+func (c *accessSubjectCapability) BindAccessSubject(subject string) (capability.Capability, error) {
+	return &accessSubjectCapability{subject: subject}, nil
+}
+
+func (c *accessSubjectCapability) Register(server *mcp.Server) error {
+	mcp.AddTool(server, &mcp.Tool{Name: "subject_current"},
+		func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, map[string]string, error) {
+			return nil, map[string]string{"subject": c.subject}, nil
+		})
+	return nil
+}
+
+type fakeMixedAccessAuthenticator struct{}
+
+func (fakeMixedAccessAuthenticator) Authenticate(r *http.Request) (auth.Principal, error) {
+	policy := config.Client{Profile: "all", ToolPolicy: "test-all", Execute: true}
+	switch r.Header.Get(auth.CloudflareAccessJWTHeader) {
+	case "signed-person":
+		return auth.Principal{Identity: "cloudflare_access:person-1", Source: "cloudflare_access", PolicyName: "people", Policy: policy}, nil
+	case "signed-agent-a":
+		return auth.Principal{Identity: "cloudflare_access:service_token:agent-a.access", Source: "cloudflare_access", PolicyName: "agents", Policy: policy, ServiceToken: true}, nil
+	}
+	return auth.Principal{}, auth.ErrInvalidAccessAssertion
+}
+
+func (fakeMixedAccessAuthenticator) WriteError(w http.ResponseWriter, _ error) {
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+}
+
+func TestCloudflareAccessSessionBindsPersonSubjectOnly(t *testing.T) {
+	cfg := config.Config{
+		Transport: "http", Profile: "all", Profiles: map[string][]string{"all": {"subject"}},
+		CloudflareAccess: &config.CloudflareAccessConfig{
+			TeamDomain: "https://example.cloudflareaccess.com", Audience: "access-audience",
+			Policies: map[string]config.OAuthPolicy{
+				"people": {Version: "v1", Subjects: []string{"person-1"}, Profile: "all", Execute: true},
+				"agents": {Version: "v1", Subjects: []string{"service_token:agent-a.access"}, Profile: "all", Execute: true},
+			},
+		},
+	}
+	secureTestConfig(&cfg)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	handler, err := NewWithAuth(ctx, "test", cfg, []capability.Capability{&accessSubjectCapability{}}, nil, fakeMixedAccessAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer handler.Close()
+	api := httptest.NewServer(handler)
+	defer api.Close()
+
+	for _, test := range []struct{ assertion, want string }{
+		{assertion: "signed-person", want: `"subject":"cloudflare_access:person-1"`},
+		{assertion: "signed-agent-a", want: `"subject":""`},
+	} {
+		status, id, body := requestWithAccessAssertion(t, api, test.assertion, "", initialize)
+		if status != http.StatusOK || id == "" {
+			t.Fatalf("%s initialize = %d %s", test.assertion, status, body)
+		}
+		status, _, body = requestWithAccessAssertion(t, api, test.assertion, id, `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"subject_current","arguments":{}}}`)
+		if status != http.StatusOK || !strings.Contains(body, test.want) {
+			t.Fatalf("%s delegated call = %d %s", test.assertion, status, body)
+		}
 	}
 }
