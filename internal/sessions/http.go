@@ -45,6 +45,7 @@ type entry struct {
 
 type requestClient struct {
 	name, binding, oauthSubject string
+	accessSubject               string
 	policy                      config.Client
 	toolPolicy                  config.ToolPolicy
 	controller                  *gateway.CallController
@@ -269,11 +270,14 @@ func (h *Handler) authenticate(r *http.Request) (*requestClient, error) {
 	if policy.IdentityPolicyVersion != "" {
 		binding += "\x00" + policy.IdentityPolicyVersion
 	}
-	oauthSubject := ""
-	if source == "oauth" {
+	oauthSubject, accessSubject := "", ""
+	switch {
+	case source == "oauth":
 		oauthSubject = principal.Identity
+	case source == "cloudflare_access" && !principal.ServiceToken:
+		accessSubject = principal.Identity
 	}
-	return &requestClient{name: principal.Identity, binding: binding, oauthSubject: oauthSubject, policy: policy, toolPolicy: toolPolicy}, nil
+	return &requestClient{name: principal.Identity, binding: binding, oauthSubject: oauthSubject, accessSubject: accessSubject, policy: policy, toolPolicy: toolPolicy}, nil
 }
 
 func (h *Handler) resolvePrincipal(principal auth.Principal) (config.Client, config.ToolPolicy, string, error) {
@@ -570,6 +574,17 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 			if binder, ok := item.(capability.OAuthSubjectBinder); ok {
 				var bindErr error
 				item, bindErr = binder.BindOAuthSubject(client.oauthSubject)
+				if bindErr != nil {
+					h.mu.Unlock()
+					http.Error(w, "session configuration error", 500)
+					return
+				}
+			}
+		}
+		if client.accessSubject != "" {
+			if binder, ok := item.(capability.AccessSubjectBinder); ok {
+				var bindErr error
+				item, bindErr = binder.BindAccessSubject(client.accessSubject)
 				if bindErr != nil {
 					h.mu.Unlock()
 					http.Error(w, "session configuration error", 500)

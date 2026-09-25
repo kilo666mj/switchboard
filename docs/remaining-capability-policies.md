@@ -103,6 +103,18 @@ derive the sender for send and reply, bind task transitions to the acting
 agent, and keep its append-only event history. Cancellation stays in a
 separate group because it is destructive.
 
+## Taskboard
+
+Taskboard keeps task visibility, lanes and lifecycle rules. Switchboard reaches
+it with a dedicated Taskboard agent credential rather than the deployment-wide
+bearer. With `forward_cloudflare_access_subject`, a person authenticated by
+Cloudflare Access is sent in `X-Switchboard-Access-Subject`. Taskboard trusts
+that header only when the bearer resolves to a principal listed in
+`TASKBOARD_MCP_DELEGATION_PRINCIPALS` and `TASKBOARD_MCP_HUMAN_DELEGATION` is
+enabled; it ignores the header otherwise. The forwarded person only affects
+`task_create`, which records the task as that person with Taskboard's default
+role. Every other tool keeps the Switchboard credential's agent authority.
+
 ## Activation order
 
 1. Add only Log Watcher to the shared profile and validate reader, operator,

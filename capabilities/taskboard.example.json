@@ -8,6 +8,7 @@
   "description": "Track agent work as durable tasks, checklists, runs, and status events.",
   "endpoint_env": "TASKBOARD_MCP_URL",
   "forward_session_id": true,
+  "forward_cloudflare_access_subject": true,
   "headers": {
     "Authorization": {"env": "TASKBOARD_MCP_TOKEN", "prefix": "Bearer "}
   }

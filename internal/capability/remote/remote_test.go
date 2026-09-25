@@ -286,6 +286,90 @@ func TestForwardOAuthSubjectRequiresAuthenticatedUpstream(t *testing.T) {
 	}
 }
 
+func TestCapabilityForwardsOnlyBoundAccessSubject(t *testing.T) {
+	var accessSubject, oauthSubject atomic.Value
+	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "taskboard", Version: "test"})
+	mcp.AddTool(upstream, &mcp.Tool{Name: "create", Description: "Create"},
+		func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, map[string]bool, error) {
+			return nil, map[string]bool{"ok": true}, nil
+		})
+	upstreamHandler, err := mcpkit.StatelessHTTP(func(r *http.Request) *mcp.Server {
+		if r.Header.Get("Authorization") != "Bearer gateway-service-token" {
+			return nil
+		}
+		if subject := r.Header.Get(delegatedAccessSubjectHeader); subject != "" {
+			accessSubject.Store(subject)
+		}
+		if subject := r.Header.Get(delegatedOAuthSubjectHeader); subject != "" {
+			oauthSubject.Store(subject)
+		}
+		return upstream
+	}, mcpkit.HTTPOptions{DisableLocalhostProtection: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := httptest.NewTLSServer(upstreamHandler)
+	defer api.Close()
+	t.Setenv("UPSTREAM_TOKEN", "gateway-service-token")
+
+	item, err := newWithTransport(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "taskboard", Endpoint: api.URL, ForwardAccessSubject: true,
+		Headers: map[string]HeaderValue{"Authorization": {Env: "UPSTREAM_TOKEN", Prefix: "Bearer "}},
+	}, nil, api.Client().Transport.(*http.Transport).Clone())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer item.Close()
+	if accessSubject.Load() != nil {
+		t.Fatal("startup request forwarded a Cloudflare Access subject")
+	}
+	unbound, err := item.BindOAuthSubject("subject-alice")
+	if err != nil || unbound != item {
+		t.Fatalf("OAuth binding on an Access-only capability = %v, %v", unbound, err)
+	}
+	bound, err := item.BindAccessSubject("cloudflare_access:person-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{bound.Name(): "allow"}}, []capbase.Capability{bound})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := mcpkittest.Connect(t, server)
+	result, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "taskboard_create", Arguments: map[string]any{}})
+	if err != nil || result.IsError {
+		t.Fatalf("delegated call failed: result=%#v error=%v", result, err)
+	}
+	if got, _ := accessSubject.Load().(string); got != "cloudflare_access:person-1" {
+		t.Fatalf("delegated Access subject = %q", got)
+	}
+	if oauthSubject.Load() != nil {
+		t.Fatal("Access subject leaked into the OAuth subject header")
+	}
+	for _, subject := range []string{"person-1", "cloudflare_access:service_token:build.access", "cloudflare_access:bad\r\nsubject", ""} {
+		if _, err := item.BindAccessSubject(subject); err == nil {
+			t.Fatalf("unsafe delegated Access subject %q was accepted", subject)
+		}
+	}
+}
+
+func TestForwardAccessSubjectRequiresAuthenticatedUpstream(t *testing.T) {
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "https://127.0.0.1:1", ForwardAccessSubject: true,
+	}); err == nil {
+		item.Close()
+		t.Fatal("unauthenticated delegated Access identity configuration was accepted")
+	}
+	t.Setenv("UPSTREAM_SUBJECT", "caller-controlled")
+	if item, err := New(t.Context(), Manifest{
+		Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1",
+		Headers: map[string]HeaderValue{delegatedAccessSubjectHeader: {Env: "UPSTREAM_SUBJECT"}},
+	}); err == nil {
+		item.Close()
+		t.Fatal("reserved Access subject header was accepted from a manifest")
+	}
+}
+
 func TestForwardSessionIDRequiresAuthenticatedUpstream(t *testing.T) {
 	if item, err := New(t.Context(), Manifest{Version: 1, Type: "mcp", Name: "test", Endpoint: "http://127.0.0.1:1", ForwardSessionID: true}); err == nil {
 		item.Close()
