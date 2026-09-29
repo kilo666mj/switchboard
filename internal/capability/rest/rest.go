@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 const maxResponseBytes = 8 << 20

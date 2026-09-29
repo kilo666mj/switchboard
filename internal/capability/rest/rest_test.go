@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/kilo666mj/mcpkit/mcpkittest"
 	capbase "github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit/mcpkittest"
 )
 
 func TestCapabilityCallsAPI(t *testing.T) {

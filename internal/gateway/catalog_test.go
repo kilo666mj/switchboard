@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kilo666mj/mcpkit/mcpkittest"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/loader"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit/mcpkittest"
 )
 
 func TestCatalogProfileRedactionAndSchemas(t *testing.T) {

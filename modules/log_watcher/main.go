@@ -13,11 +13,11 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kilo666mj/mcpkit"
 	caprest "github.com/kilo666mj/switchboard/internal/capability/rest"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 var version = "dev"

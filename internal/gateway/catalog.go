@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 type searchInput struct {

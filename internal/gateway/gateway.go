@@ -3,11 +3,11 @@ package gateway
 import (
 	"fmt"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 func New(version, profile, policyName string, policy config.ToolPolicy, capabilities []capability.Capability) (*mcp.Server, error) {
