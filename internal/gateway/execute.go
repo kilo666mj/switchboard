@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 func registerExecutor(server *mcp.Server, items []capability.Capability) {

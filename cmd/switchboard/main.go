@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/auth"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
@@ -27,6 +26,7 @@ import (
 	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/kilo666mj/switchboard/internal/sessions"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 var version = "dev"

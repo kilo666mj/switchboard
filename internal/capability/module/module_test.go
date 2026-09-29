@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kilo666mj/mcpkit"
-	"github.com/kilo666mj/mcpkit/mcpkittest"
 	capbase "github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/egress"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
+	"go.michaelspost.com/mcpkit/mcpkittest"
 )
 
 func TestCapabilityStartsModuleAndProxiesTools(t *testing.T) {

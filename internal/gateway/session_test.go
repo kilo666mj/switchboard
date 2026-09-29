@@ -10,13 +10,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/kilo666mj/mcpkit/mcpkittest"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/capability/rest"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/gateway"
 	"github.com/kilo666mj/switchboard/internal/requestmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit/mcpkittest"
 )
 
 func TestSessionPermissions(t *testing.T) {

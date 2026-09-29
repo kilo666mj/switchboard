@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kilo666mj/mcpkit"
 	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.michaelspost.com/mcpkit"
 )
 
 // NewSession creates an isolated tool registry. The caller owns authentication,
