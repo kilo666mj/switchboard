@@ -191,11 +191,12 @@ introduced tools must fail closed where an explicit allowlist is used.
 
 ## Packaging and deployment
 
-The Log Watcher module is built as `switchboard-module-log-watcher`. Review
+The Log Watcher module is built as `switchboard-module-log-watcher`, and UniFi
+as `switchboard-module-unifi`. Review
 archives place it under `modules/`, embed the same release version as the
-gateway, and include the union of both binaries' dependency and notice graphs.
-The release smoke test initializes both native binaries and verifies the module
-tool catalog without contacting Log Watcher.
+gateway, and include the union of the gateway and modules' dependency and notice
+graphs. The release smoke test initializes all native binaries and verifies the
+module tool catalogs without contacting upstream services.
 
 The Ansible deployment builds the module for the target architecture, installs
 it at `/usr/local/libexec/switchboard/switchboard-module-log-watcher`, installs
