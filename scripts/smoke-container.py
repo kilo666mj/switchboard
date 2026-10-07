@@ -104,6 +104,26 @@ def main():
         if process.poll() is None:
             process.kill()
             process.wait(timeout=5)
+    process = subprocess.Popen([
+        'docker', 'run', '--rm', '-i', '--network', 'none', '--read-only',
+        '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+        '--entrypoint', '/usr/local/libexec/switchboard/switchboard-module-unifi',
+        '--env', 'SWITCHBOARD_MODULE_NAME=unifi',
+        '--env', 'UNIFI_URL=https://127.0.0.1:1',
+        '--env', 'UNIFI_API_KEY=container-smoke-placeholder',
+        '--env', 'SWITCHBOARD_MODULE_EGRESS_POLICY=' + module_policy,
+        args.image,
+    ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        verify_mcp(process, args.version, {
+            'unifi_get_info', 'unifi_list_sites', 'unifi_list_networks', 'unifi_get_network',
+            'unifi_list_wifi', 'unifi_get_wifi', 'unifi_list_firewall_zones', 'unifi_list_firewall_policies',
+            'unifi_list_acl_rules', 'unifi_list_devices', 'unifi_get_device', 'unifi_list_clients',
+        })
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
     print('Non-root, read-only, network-isolated gateway and module MCP startup passed.')
 
 

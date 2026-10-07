@@ -8,7 +8,7 @@ minor tag `0.1` are published, while `latest` follows the newest semantic-versio
 release. Branch images use `main` and `sha-*` tags and are not releases.
 
 The runtime image is scratch-based and non-root. It contains the gateway, the
-optional Log Watcher module, CA roots, the project license, collected third-party
+optional Log Watcher and UniFi modules, CA roots, the project license, collected third-party
 notices, and the compiled dependency inventory. Configuration, capability
 manifests, and credentials are never included; mount or inject them at runtime.
 The container workflow first starts a native image with its network disabled,
@@ -31,6 +31,8 @@ and arm64 tar archives plus `SHA256SUMS`. Use `--target linux/amd64` or
 - `switchboard`: a static Go binary with the candidate version in MCP server info.
 - `modules/switchboard-module-log-watcher`: the static Log Watcher MCP module
   with the same candidate version.
+- `modules/switchboard-module-unifi`: the static read-only UniFi MCP module
+  with the same candidate version.
 - `README.md` and the project's MIT `LICENSE`.
 - `THIRD_PARTY_NOTICES.txt`: verbatim notices from the target's compiled module
   graph and Go toolchain, including nested notices conservatively.
@@ -39,11 +41,11 @@ and arm64 tar archives plus `SHA256SUMS`. Use `--target linux/amd64` or
 Builds omit VCS metadata and source paths, and use fixed archive timestamps and
 neutral owners. Compare independent builds made from the same source with the
 same toolchain. The smoke verifier checks archive hashes, exact entries,
-metadata, both executable permissions and each notice against its recorded hash.
+metadata, all executable permissions and each notice against its recorded hash.
 It also starts the native gateway and module binaries, checks their embedded
-versions via MCP initialization, and retrieves both tool catalogs. The gateway
-uses a temporary empty stdio profile; the module receives a non-listening test
-URL and is not asked to call it. Neither contacts an upstream service.
+versions via MCP initialization, and retrieves their tool catalogs. The gateway
+uses a temporary empty stdio profile; the modules receive non-listening test
+URLs and are not asked to call them. None contacts an upstream service.
 
 The smoke verifier needs an archive for its native Linux amd64 or arm64 host.
 Cross-compilation and archive inspection do not prove native arm64 execution.
@@ -61,7 +63,7 @@ Check obligations against the exact final artifacts. Upstream copyright and
 notice text must remain intact even when it contains attribution email addresses;
 review those separately from private contributor metadata and operational data.
 
-These archives contain the Go gateway and its reviewed Log Watcher module. They
+These archives contain the Go gateway and its reviewed Log Watcher and UniFi modules. They
 do not bundle the pi extension, its npm dependencies, deployment configuration,
 capability manifests or operator state.
 The pi extension has a separate source review workflow below; licensing acceptance

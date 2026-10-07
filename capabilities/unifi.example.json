@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "type": "module",
+  "name": "unifi",
+  "title": "UniFi Network",
+  "description": "Read reviewed configuration and inventory fields directly from the local UniFi OS Server Network Integration API; credentials are omitted.",
+  "tags": [
+    "network",
+    "wifi",
+    "vlan",
+    "unifi"
+  ],
+  "risk": "read-only",
+  "command": "/usr/local/libexec/switchboard/switchboard-module-unifi",
+  "environment": [
+    "UNIFI_URL",
+    "UNIFI_API_KEY"
+  ],
+  "enforce_egress_policy": true,
+  "include_tools": [
+    "unifi_get_info",
+    "unifi_list_sites",
+    "unifi_list_networks",
+    "unifi_get_network",
+    "unifi_list_wifi",
+    "unifi_get_wifi",
+    "unifi_list_firewall_zones",
+    "unifi_list_firewall_policies",
+    "unifi_list_acl_rules",
+    "unifi_list_devices",
+    "unifi_get_device",
+    "unifi_list_clients"
+  ]
+}

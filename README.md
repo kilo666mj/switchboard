@@ -155,6 +155,7 @@ Review the examples before exposing Switchboard outside a trusted network.
   exact-tool authorization
 - [Pocket ID OAuth setup](docs/pocket-id.md) — resource-server and client setup
 - [Dynamic MCP discovery](docs/dynamic-mcp.md) — catalog and activation design
+- [UniFi Network module](modules/unifi/README.md) — direct local read-only configuration access
 - [Capability modules](docs/modules.md) — isolated local integration model
 - [Workplace adoption](docs/workplace-adoption.md) — staged rollout guidance
 - [Unattended agents](docs/unattended-agents.md) — workload identities,

@@ -1,0 +1,562 @@
+{
+  "acl_rules": {
+    "count": null,
+    "data": {
+      "action": null,
+      "description": null,
+      "destinationFilter": {
+        "ipAddressesOrSubnets": null,
+        "macAddresses": null,
+        "networkIds": null,
+        "portFilter": null,
+        "prefixLength": null,
+        "type": null
+      },
+      "enabled": null,
+      "enforcingDeviceFilter": {
+        "deviceIds": null,
+        "type": null
+      },
+      "id": null,
+      "index": null,
+      "metadata": {
+        "origin": null,
+        "source": null
+      },
+      "name": null,
+      "networkIdFilter": null,
+      "protocolFilter": null,
+      "sourceFilter": {
+        "ipAddressesOrSubnets": null,
+        "macAddresses": null,
+        "networkIds": null,
+        "portFilter": null,
+        "prefixLength": null,
+        "type": null
+      },
+      "type": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "clients": {
+    "count": null,
+    "data": {
+      "access": {
+        "authorized": null,
+        "type": null
+      },
+      "connectedAt": null,
+      "id": null,
+      "ipAddress": null,
+      "macAddress": null,
+      "name": null,
+      "type": null,
+      "uplinkDeviceId": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "device": {
+    "adoptedAt": null,
+    "configurationId": null,
+    "features": {
+      "switching": {
+        "lags": {
+          "id": null,
+          "metadata": {
+            "origin": null,
+            "source": null
+          },
+          "portIdxs": null
+        }
+      }
+    },
+    "firmwareUpdatable": null,
+    "firmwareVersion": null,
+    "id": null,
+    "interfaces": {
+      "ports": {
+        "connector": null,
+        "idx": null,
+        "maxSpeedMbps": null,
+        "poe": {
+          "enabled": null,
+          "standard": null,
+          "state": null,
+          "type": null
+        },
+        "speedMbps": null,
+        "state": null
+      },
+      "radios": {
+        "channel": null,
+        "channelWidthMHz": null,
+        "frequencyGHz": null,
+        "wlanStandard": null
+      }
+    },
+    "ipAddress": null,
+    "macAddress": null,
+    "model": null,
+    "name": null,
+    "provisionedAt": null,
+    "state": null,
+    "supported": null,
+    "uplink": {
+      "deviceId": null
+    }
+  },
+  "devices": {
+    "count": null,
+    "data": {
+      "features": null,
+      "firmwareUpdatable": null,
+      "firmwareVersion": null,
+      "id": null,
+      "interfaces": null,
+      "ipAddress": null,
+      "macAddress": null,
+      "model": null,
+      "name": null,
+      "state": null,
+      "supported": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "firewall_policies": {
+    "count": null,
+    "data": {
+      "action": {
+        "allowReturnTraffic": null,
+        "type": null
+      },
+      "connectionStateFilter": null,
+      "description": null,
+      "destination": {
+        "trafficFilter": {
+          "applicationCategoryFilter": {
+            "applicationCategoryIds": null
+          },
+          "applicationFilter": {
+            "applicationIds": null
+          },
+          "domainFilter": {
+            "domains": null,
+            "type": null
+          },
+          "ipAddressFilter": {
+            "items": {
+              "start": null,
+              "stop": null,
+              "type": null,
+              "value": null
+            },
+            "matchOpposite": null,
+            "trafficMatchingListId": null,
+            "type": null
+          },
+          "ipv6IidFilter": {
+            "ipv6Iid": null,
+            "matchOpposite": null
+          },
+          "networkFilter": {
+            "matchOpposite": null,
+            "networkIds": null
+          },
+          "portFilter": {
+            "items": {
+              "start": null,
+              "stop": null,
+              "type": null,
+              "value": null
+            },
+            "matchOpposite": null,
+            "trafficMatchingListId": null,
+            "type": null
+          },
+          "regionFilter": {
+            "regions": null
+          },
+          "siteToSiteVpnTunnelFilter": {
+            "siteToSiteVpnTunnelId": null
+          },
+          "type": null,
+          "vpnServerFilter": {
+            "matchOpposite": null,
+            "vpnServerIds": null
+          }
+        },
+        "zoneId": null
+      },
+      "enabled": null,
+      "id": null,
+      "index": null,
+      "ipProtocolScope": {
+        "ipVersion": null,
+        "protocolFilter": {
+          "matchOpposite": null,
+          "preset": {
+            "name": null
+          },
+          "protocol": {
+            "name": null,
+            "typenameFilter": null
+          },
+          "protocolNumber": null,
+          "type": null
+        }
+      },
+      "ipsecFilter": null,
+      "loggingEnabled": null,
+      "metadata": {
+        "origin": null,
+        "source": null
+      },
+      "name": null,
+      "schedule": {
+        "date": null,
+        "mode": null,
+        "repeatOnDays": null,
+        "startDate": null,
+        "stopDate": null,
+        "timeFilter": {
+          "startTime": null,
+          "stopTime": null
+        }
+      },
+      "source": {
+        "trafficFilter": {
+          "ipAddressFilter": {
+            "items": {
+              "start": null,
+              "stop": null,
+              "type": null,
+              "value": null
+            },
+            "matchOpposite": null,
+            "trafficMatchingListId": null,
+            "type": null
+          },
+          "ipv6IidFilter": {
+            "ipv6Iid": null,
+            "matchOpposite": null
+          },
+          "macAddressFilter": null,
+          "networkFilter": {
+            "matchOpposite": null,
+            "networkIds": null
+          },
+          "portFilter": {
+            "items": {
+              "start": null,
+              "stop": null,
+              "type": null,
+              "value": null
+            },
+            "matchOpposite": null,
+            "trafficMatchingListId": null,
+            "type": null
+          },
+          "regionFilter": {
+            "regions": null
+          },
+          "siteToSiteVpnTunnelFilter": {
+            "siteToSiteVpnTunnelId": null
+          },
+          "type": null,
+          "vpnServerFilter": {
+            "matchOpposite": null,
+            "vpnServerIds": null
+          }
+        },
+        "zoneId": null
+      }
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "firewall_zones": {
+    "count": null,
+    "data": {
+      "id": null,
+      "metadata": {
+        "origin": null,
+        "source": null
+      },
+      "name": null,
+      "networkIds": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "info": {
+    "applicationVersion": null
+  },
+  "network": {
+    "cellularBackupEnabled": null,
+    "default": null,
+    "deviceId": null,
+    "dhcpGuarding": {
+      "trustedDhcpServerIpAddresses": null
+    },
+    "enabled": null,
+    "id": null,
+    "internetAccessEnabled": null,
+    "ipv4Configuration": {
+      "additionalHostIpSubnets": null,
+      "autoScaleEnabled": null,
+      "dhcpConfiguration": {
+        "dhcpServerIpAddresses": null,
+        "dnsServerIpAddressesOverride": null,
+        "domainName": null,
+        "gatewayIpAddressOverride": null,
+        "ipAddressRange": {
+          "start": null,
+          "stop": null
+        },
+        "leaseTimeSeconds": null,
+        "mode": null,
+        "ntpServerIpAddresses": null,
+        "option43Value": null,
+        "pingConflictDetectionEnabled": null,
+        "pxeConfiguration": {
+          "filename": null,
+          "serverIpAddress": null
+        },
+        "tftpServerAddress": null,
+        "timeOffsetSeconds": null,
+        "winsServerIpAddresses": null,
+        "wpadUrl": null
+      },
+      "hostIpAddress": null,
+      "natOutboundIpAddressConfiguration": {
+        "ipAddressSelectionMode": null,
+        "ipAddressSelectors": {
+          "start": null,
+          "stop": null,
+          "type": null,
+          "value": null
+        },
+        "type": null,
+        "wanInterfaceId": null
+      },
+      "prefixLength": null
+    },
+    "ipv6Configuration": {
+      "additionalHostIpSubnets": null,
+      "clientAddressAssignment": {
+        "dhcpConfiguration": {
+          "ipAddressSuffixRange": {
+            "start": null,
+            "stop": null
+          },
+          "leaseTimeSeconds": null
+        },
+        "slaacEnabled": null
+      },
+      "dnsServerIpAddressesOverride": null,
+      "hostIpAddress": null,
+      "interfaceType": null,
+      "prefixDelegationWanInterfaceId": null,
+      "prefixLength": null,
+      "routerAdvertisement": {
+        "priority": null
+      }
+    },
+    "isolationEnabled": null,
+    "management": null,
+    "mdnsForwardingEnabled": null,
+    "metadata": {
+      "origin": null,
+      "source": null
+    },
+    "name": null,
+    "vlanId": null,
+    "zoneId": null
+  },
+  "networks": {
+    "count": null,
+    "data": {
+      "default": null,
+      "deviceId": null,
+      "enabled": null,
+      "id": null,
+      "management": null,
+      "metadata": {
+        "origin": null,
+        "source": null
+      },
+      "name": null,
+      "vlanId": null,
+      "zoneId": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "sites": {
+    "count": null,
+    "data": {
+      "id": null,
+      "internalReference": null,
+      "name": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "wifi": {
+    "count": null,
+    "data": {
+      "broadcastingDeviceFilter": {
+        "deviceIds": null,
+        "deviceTagIds": null,
+        "type": null
+      },
+      "broadcastingFrequenciesGHz": null,
+      "enabled": null,
+      "hotspotConfiguration": {
+        "type": null
+      },
+      "id": null,
+      "metadata": {
+        "origin": null,
+        "source": null
+      },
+      "name": null,
+      "network": {
+        "networkId": null,
+        "type": null
+      },
+      "securityConfiguration": {
+        "presharedKeyNetworkIds": {
+          "networkId": null,
+          "type": null
+        },
+        "type": null
+      },
+      "type": null
+    },
+    "limit": null,
+    "offset": null,
+    "totalCount": null
+  },
+  "wifi_details": {
+    "advertiseDeviceName": null,
+    "arpProxyEnabled": null,
+    "bandSteeringEnabled": null,
+    "basicDataRateKbpsByFrequencyGHz": {
+      "2.4": null,
+      "5": null
+    },
+    "blackoutScheduleConfiguration": {
+      "days": {
+        "day": null,
+        "timeRanges": {
+          "endTime": null,
+          "startTime": null
+        },
+        "type": null
+      }
+    },
+    "broadcastingDeviceFilter": {
+      "deviceIds": null,
+      "deviceTagIds": null,
+      "type": null
+    },
+    "broadcastingFrequenciesGHz": null,
+    "bssTransitionEnabled": null,
+    "channel2gLockedTo6": null,
+    "clientFilteringPolicy": {
+      "action": null,
+      "macAddressFilter": null
+    },
+    "clientIsolationEnabled": null,
+    "dnsAssistanceConfiguration": {
+      "mode": null,
+      "servers": null
+    },
+    "dtimPeriod2gLockedTo3": null,
+    "dtimPeriodByFrequencyGHzOverride": {
+      "2.4": null,
+      "5": null,
+      "6": null
+    },
+    "enabled": null,
+    "handoffSuggestionsConfiguration": {
+      "band5GHzRssiThreshold": null,
+      "band6GHzRssiThreshold": null
+    },
+    "hideName": null,
+    "hotspotConfiguration": {
+      "type": null
+    },
+    "id": null,
+    "mdnsProxyConfiguration": {
+      "mode": null,
+      "policies": {
+        "action": null,
+        "bridgingNetworkIds": null,
+        "deviceFilter": {
+          "deviceIds": null,
+          "deviceTagIds": null,
+          "type": null
+        },
+        "serviceFilter": {
+          "name": null,
+          "type": null,
+          "typeDomain": null
+        }
+      }
+    },
+    "metadata": {
+      "origin": null,
+      "source": null
+    },
+    "mloEnabled": null,
+    "multicastFilteringPolicy": {
+      "action": null,
+      "sourceMacAddressFilter": null
+    },
+    "multicastToUnicastConversionEnabled": null,
+    "name": null,
+    "network": {
+      "networkId": null,
+      "type": null
+    },
+    "securityConfiguration": {
+      "coaEnabled": null,
+      "encryption": null,
+      "fastRoamingEnabled": null,
+      "groupRekeyIntervalSeconds": null,
+      "pmfMode": null,
+      "radiusConfiguration": {
+        "macAuthenticationConfiguration": {
+          "macAddressFormat": null
+        },
+        "nasId": {
+          "source": null,
+          "type": null,
+          "value": null
+        },
+        "profileId": null
+      },
+      "saeConfiguration": {
+        "anticloggingThresholdSeconds": null,
+        "syncTimeSeconds": null
+      },
+      "securityMode": null,
+      "type": null,
+      "wpa3FastRoamingEnabled": null
+    },
+    "type": null,
+    "uapsdEnabled": null
+  }
+}

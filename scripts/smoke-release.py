@@ -21,7 +21,7 @@ def main():
     if platform.system() != 'Linux' or not arch:
         parser.error('native smoke verification requires Linux amd64 or arm64')
     native = None
-    native_module = None
+    native_modules = {}
     hashes = (args.directory / 'SHA256SUMS').read_text().splitlines()
     assert hashes, 'empty checksum manifest'
     for line in hashes:
@@ -32,7 +32,7 @@ def main():
         with tarfile.open(archive, 'r:gz') as tar:
             entries = tar.getmembers()
             prefix = name.removesuffix('.tar.gz')
-            expected = {'switchboard', 'modules/switchboard-module-log-watcher', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'DEPENDENCIES.json'}
+            expected = {'switchboard', 'modules/switchboard-module-log-watcher', 'modules/switchboard-module-unifi', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'DEPENDENCIES.json'}
             assert len(entries) == len(expected) and {entry.name for entry in entries} == {prefix + '/' + file for file in expected}, 'unexpected archive contents'
             notices = tar.extractfile(prefix + '/THIRD_PARTY_NOTICES.txt').read()
             dependencies = json.load(tar.extractfile(prefix + '/DEPENDENCIES.json'))
@@ -52,12 +52,14 @@ def main():
                 assert not entry.uname and not entry.gname, 'identifying archive metadata'
             binary = tar.getmember(prefix + '/switchboard')
             assert binary.mode == 0o755, 'binary is not executable'
-            module = tar.getmember(prefix + '/modules/switchboard-module-log-watcher')
-            assert module.mode == 0o755, 'module is not executable'
             if name.endswith('_linux_' + arch + '.tar.gz'):
                 native = tar.extractfile(binary).read()
-                native_module = tar.extractfile(module).read()
-    assert native and native_module, 'no native archive to smoke test'
+            for module_name in ['log-watcher', 'unifi']:
+                module = tar.getmember(prefix + '/modules/switchboard-module-' + module_name)
+                assert module.mode == 0o755, 'module is not executable'
+                if name.endswith('_linux_' + arch + '.tar.gz'):
+                    native_modules[module_name] = tar.extractfile(module).read()
+    assert native and len(native_modules) == 2, 'no native archive to smoke test'
     with tempfile.TemporaryDirectory(prefix='switchboard-install-') as temporary:
         root = Path(temporary)
         binary = root / 'switchboard'
@@ -108,47 +110,56 @@ def main():
                 process.wait(timeout=5)
             process.stdin.close()
             process.stdout.close()
-        module_binary = root / 'switchboard-module-log-watcher'
-        module_binary.write_bytes(native_module)
-        module_binary.chmod(0o755)
-        module_env = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8',
-                      'SWITCHBOARD_MODULE_NAME': 'log_watcher',
-                      'LOG_WATCHER_API_URL': 'https://127.0.0.1:1',
-                      'LOG_WATCHER_API_TOKEN': 'release-smoke-placeholder',
-                      'SWITCHBOARD_MODULE_EGRESS_POLICY': json.dumps({
-                          'allowed_destinations': ['127.0.0.1:1'],
-                          'allowed_cidrs': ['127.0.0.0/8'],
-                      })}
-        process = subprocess.Popen([str(module_binary)], cwd=root, env=module_env,
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        try:
-            with selectors.DefaultSelector() as selector:
-                selector.register(process.stdout, selectors.EVENT_READ)
-                def module_rpc(identifier, method, params):
-                    process.stdin.write((json.dumps({'jsonrpc': '2.0', 'id': identifier, 'method': method, 'params': params}) + '\n').encode())
-                    process.stdin.flush()
-                    assert selector.select(timeout=10), 'module MCP response timed out'
-                    response = json.loads(process.stdout.readline(1048577))
-                    assert response.get('id') == identifier and 'error' not in response, 'module MCP request failed'
-                    return response['result']
-                initialized = module_rpc(1, 'initialize', {'protocolVersion': '2025-03-26', 'capabilities': {},
-                                                          'clientInfo': {'name': 'release-smoke', 'version': '1'}})
-                assert initialized['serverInfo']['version'] == args.version, 'incorrect module version'
-                process.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
-                process.stdin.flush()
-                catalog = module_rpc(2, 'tools/list', {})
-                assert {tool['name'] for tool in catalog['tools']} == {
-                    'log_watcher_list_excludes', 'log_watcher_add_exclude', 'log_watcher_remove_exclude'
-                }, 'incorrect module tool catalog'
-        finally:
-            process.terminate()
+        module_cases = [
+            ('log-watcher', {'SWITCHBOARD_MODULE_NAME': 'log_watcher',
+                             'LOG_WATCHER_API_URL': 'https://127.0.0.1:1',
+                             'LOG_WATCHER_API_TOKEN': 'release-smoke-placeholder'},
+             {'log_watcher_list_excludes', 'log_watcher_add_exclude', 'log_watcher_remove_exclude'}),
+            ('unifi', {'SWITCHBOARD_MODULE_NAME': 'unifi', 'UNIFI_URL': 'https://127.0.0.1:1',
+                       'UNIFI_API_KEY': 'release-smoke-placeholder'},
+             {'unifi_get_info', 'unifi_list_sites', 'unifi_list_networks', 'unifi_get_network',
+              'unifi_list_wifi', 'unifi_get_wifi', 'unifi_list_firewall_zones', 'unifi_list_firewall_policies',
+              'unifi_list_acl_rules', 'unifi_list_devices', 'unifi_get_device', 'unifi_list_clients'}),
+        ]
+        for module_name, module_configuration, expected_tools in module_cases:
+            module_binary = root / ('switchboard-module-' + module_name)
+            module_binary.write_bytes(native_modules[module_name])
+            module_binary.chmod(0o755)
+            module_env = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', **module_configuration,
+                          'SWITCHBOARD_MODULE_EGRESS_POLICY': json.dumps({
+                              'allowed_destinations': ['127.0.0.1:1'], 'allowed_cidrs': ['127.0.0.0/8']})}
+            process = subprocess.Popen([str(module_binary)], cwd=root, env=module_env,
+                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
-            process.stdin.close()
-            process.stdout.close()
+                with selectors.DefaultSelector() as selector:
+                    selector.register(process.stdout, selectors.EVENT_READ)
+                    def module_rpc(identifier, method, params):
+                        process.stdin.write((json.dumps({'jsonrpc': '2.0', 'id': identifier, 'method': method, 'params': params}) + '\n').encode())
+                        process.stdin.flush()
+                        assert selector.select(timeout=10), 'module MCP response timed out'
+                        response = json.loads(process.stdout.readline(1048577))
+                        assert response.get('id') == identifier and 'error' not in response, 'module MCP request failed'
+                        return response['result']
+                    initialized = module_rpc(1, 'initialize', {'protocolVersion': '2025-03-26', 'capabilities': {},
+                                                              'clientInfo': {'name': 'release-smoke', 'version': '1'}})
+                    assert initialized['serverInfo']['version'] == args.version, 'incorrect module version'
+                    process.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
+                    process.stdin.flush()
+                    catalog = module_rpc(2, 'tools/list', {})
+                    assert {tool['name'] for tool in catalog['tools']} == expected_tools, 'incorrect module tool catalog'
+                    if module_name == 'unifi':
+                        assert all(tool['annotations']['readOnlyHint'] for tool in catalog['tools']), 'mutating UniFi tool'
+                    process.stdin.close()
+                    assert process.wait(timeout=5) == 0, 'module did not shut down cleanly on EOF'
+            finally:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+                process.stdin.close()
+                process.stdout.close()
     print('Archive hashes, neutral metadata, dependency notices, native MCP startup and embedded version passed.')
 
 
