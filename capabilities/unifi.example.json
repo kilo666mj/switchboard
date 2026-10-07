@@ -10,7 +10,7 @@
     "vlan",
     "unifi"
   ],
-  "risk": "read-only",
+  "risk": "read_only",
   "command": "/usr/local/libexec/switchboard/switchboard-module-unifi",
   "environment": [
     "UNIFI_URL",
