@@ -2,7 +2,9 @@ package module
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -124,5 +126,42 @@ func TestMissingEnvironmentFailsBeforeStartingModule(t *testing.T) {
 	}, nil)
 	if err == nil || !strings.Contains(err.Error(), missing) {
 		t.Fatalf("missing environment error = %v", err)
+	}
+}
+
+// Deployment examples must satisfy the same manifest checks as live startup.
+func TestExampleModuleManifests(t *testing.T) {
+	paths, err := filepath.Glob("../../../capabilities/*.example.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var manifest Manifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			t.Fatal(err)
+		}
+		if manifest.Type != "module" {
+			continue
+		}
+		checked++
+		t.Run(manifest.Name, func(t *testing.T) {
+			// Installed executable paths differ by host; metadata is copied unchanged.
+			manifest.Command = executable
+			if err := validateManifest(manifest, nil); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	if checked == 0 {
+		t.Fatal("no example module manifests checked")
 	}
 }
