@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -108,5 +109,12 @@ func TestCapabilityEgressPolicyRequiresAllowedHTTPSDestination(t *testing.T) {
 		if item, err := NewWithEgress(manifest, policy); err == nil {
 			t.Fatalf("unsafe base URL accepted by %#v", item)
 		}
+	}
+}
+
+func TestManifestRejectsReservedCapabilityName(t *testing.T) {
+	m := Manifest{Version: 1, Name: "switchboard", BaseURL: "https://api.example.com", Tools: []Tool{{Name: "read", Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)}}}
+	if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "reserved") {
+		t.Fatalf("reserved capability name was accepted: %v", err)
 	}
 }

@@ -118,6 +118,9 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	if !validName.MatchString(manifest.Name) {
 		return nil, fmt.Errorf("invalid capability name %q", manifest.Name)
 	}
+	if err := capability.ValidateName(manifest.Name); err != nil {
+		return nil, err
+	}
 	if manifest.InsecureSkipVerify {
 		return nil, errors.New("insecure_skip_verify is prohibited")
 	}

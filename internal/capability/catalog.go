@@ -30,6 +30,18 @@ type Description struct {
 // Describer is optional so specialized capabilities can adopt discovery incrementally.
 type Describer interface{ Describe() Description }
 
+// ReservedName labels Switchboard's own gateway operations in audit records
+// and metrics. Capabilities may not use it.
+const ReservedName = "switchboard"
+
+// ValidateName rejects capability names reserved for the gateway itself.
+func ValidateName(name string) error {
+	if name == ReservedName {
+		return fmt.Errorf("capability name %q is reserved", name)
+	}
+	return nil
+}
+
 func ValidateRisk(risk string) error {
 	switch risk {
 	case "", "unknown", "read_only", "mutating", "destructive":

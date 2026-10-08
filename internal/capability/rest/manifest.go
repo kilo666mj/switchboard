@@ -60,6 +60,9 @@ func (m *Manifest) Validate() error {
 	if !validName.MatchString(m.Name) {
 		return fmt.Errorf("invalid capability name %q", m.Name)
 	}
+	if err := capability.ValidateName(m.Name); err != nil {
+		return err
+	}
 	baseURL := m.BaseURL
 	if m.BaseURLEnv != "" {
 		if m.BaseURL != "" {

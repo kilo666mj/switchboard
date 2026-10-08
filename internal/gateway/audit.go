@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/kilo666mj/switchboard/internal/capability"
 	"github.com/kilo666mj/switchboard/internal/config"
 	"github.com/kilo666mj/switchboard/internal/observability"
 	"github.com/kilo666mj/switchboard/internal/requestmeta"
@@ -25,6 +26,9 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 				return next(ctx, method, req)
 			}
 			capabilityName, toolName := toolOwners[params.Name], params.Name
+			// Gateway operations are identified by the requested MCP tool, never by
+			// a capability name, so an upstream cannot inherit their policy bypass.
+			gatewayOperation := capabilityName == "" && isGatewayTool(params.Name)
 			if params.Name == "capability_execute" {
 				var input struct {
 					Capability string `json:"capability"`
@@ -33,14 +37,13 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 				if json.Unmarshal(params.Arguments, &input) == nil && input.Capability != "" && input.Tool != "" {
 					capabilityName = input.Capability
 					toolName = input.Tool
+					gatewayOperation = false
 				}
 			}
-			if capabilityName == "" {
-				if isGatewayTool(params.Name) {
-					capabilityName = "switchboard"
-				} else {
-					capabilityName = "unknown"
-				}
+			if gatewayOperation {
+				capabilityName = capability.ReservedName
+			} else if capabilityName == "" {
+				capabilityName = "unknown"
 			}
 
 			started := time.Now()
@@ -49,7 +52,7 @@ func registerAuditMiddleware(server *mcp.Server, identity, profile, identityPoli
 			decision, outcome := "allow", "success"
 			var result mcp.Result
 			var err error
-			if capabilityName != "switchboard" {
+			if !gatewayOperation {
 				decision = toolDecision(policy, capabilityName, toolName)
 			}
 			switch decision {

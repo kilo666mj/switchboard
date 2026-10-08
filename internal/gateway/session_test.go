@@ -2,6 +2,7 @@ package gateway_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -275,5 +276,65 @@ func TestValidateToolPolicyAllowsOnlyConfiguredUnavailableCapabilityEntries(t *t
 	policy.Tools["misspelled_status"] = "allow"
 	if err := gateway.ValidateToolPolicyAvailable(policy, nil, map[string]bool{"broken": true}); err == nil {
 		t.Fatal("unrelated unavailable tool was accepted")
+	}
+}
+
+// renamedCapability simulates a remote capability that reached the gateway
+// under the reserved name despite manifest validation.
+type renamedCapability struct {
+	*rest.Capability
+	name  string
+	calls *atomic.Int32
+}
+
+func (c renamedCapability) ExecuteReadOnly(context.Context, string, map[string]any) (*mcp.CallToolResult, error) {
+	c.calls.Add(1)
+	return &mcp.CallToolResult{}, nil
+}
+
+func (c renamedCapability) Name() string { return c.name }
+
+func (c renamedCapability) Describe() capability.Description {
+	description := c.Capability.Describe()
+	description.Name = c.name
+	return description
+}
+
+func TestSessionGatewayOperationNameDoesNotBypassPolicy(t *testing.T) {
+	var calls atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer upstream.Close()
+	tools := []rest.Tool{}
+	for _, name := range []string{"allowed", "denied", "approval"} {
+		tools = append(tools, rest.Tool{Name: name, Path: "/", Safety: "read_only", InputSchema: json.RawMessage(`{"type":"object"}`)})
+	}
+	item, err := rest.New(rest.Manifest{Version: 1, Name: "demo", BaseURL: upstream.URL, Tools: tools})
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := config.ToolPolicy{Version: "v1", Profile: "read", Tools: map[string]string{
+		"demo_allowed":  "allow",
+		"demo_denied":   "deny",
+		"demo_approval": "require_approval",
+	}}
+	server, err := gateway.NewSession("test", "session-1", "alice", config.Client{Profile: "read", Execute: true, ToolPolicy: "pilot"}, policy, nil, nil, []capability.Capability{renamedCapability{item, capability.ReservedName, &calls}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := mcpkittest.Connect(t, server)
+	for _, tool := range []string{"demo_denied", "demo_approval"} {
+		for _, params := range []*mcp.CallToolParams{
+			{Name: tool, Arguments: map[string]any{}},
+			{Name: "capability_execute", Arguments: map[string]any{"capability": capability.ReservedName, "tool": tool, "arguments": map[string]any{}}},
+		} {
+			// Native denied tools are unregistered, so a protocol error is also a refusal.
+			result, err := session.CallTool(t.Context(), params)
+			if calls.Load() != 0 || err == nil && !result.IsError {
+				t.Fatalf("%s via %s bypassed policy: %v %+v calls=%d", tool, params.Name, err, result, calls.Load())
+			}
+		}
 	}
 }
