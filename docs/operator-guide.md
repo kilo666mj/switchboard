@@ -697,33 +697,6 @@ intended for publication. Complete the full-history privacy and secret scans,
 artifact verification, attribution review, and hosted checks before publishing
 a release.
 
-## Agent Relay coordination
-
-Agent Relay is a separate durable mailbox/task service. Copy
-`capabilities/agent.example.json` to `capabilities/agent.json`, supply
-`AGENT_RELAY_MCP_URL` and `AGENT_RELAY_MCP_TOKEN` in the gateway environment,
-and select the `agent-relay` example profile or add `agent` to an intended
-profile. For dynamic clients, include `agent` in `initial_capabilities` when
-clients need its native tools immediately at startup.
-
-The gateway exposes `agent_list`, `agent_send`, `agent_inbox`, `agent_read`,
-`agent_reply`, `agent_claim`, `agent_complete`, `agent_cancel`, and
-`agent_status`.
-Relay owns identities, messages, task state, and audit history; Switchboard
-continues to own capability access and transport composition.
-
-Each upstream token represents one Relay identity. Distinct gateway client
-credentials do not become distinct Relay identities on a shared upstream
-connection. Use a separate gateway process/upstream credential per installation
-when isolation is required, or connect directly to Relay. A client cannot
-choose a different Relay sender through tool arguments in per-agent mode.
-Compatibility execution remains read-only: use native tools for sending and
-task transitions. The existing pi adapter exposes Relay without another
-service-specific extension.
-
-Agent Relay's `docs/clients.md` includes setup instructions and an opt-in
-real-process integration test covering the gateway and mailbox task flow.
-
 ## License
 
 Switchboard is licensed under the [MIT License](../LICENSE). Third-party dependencies
