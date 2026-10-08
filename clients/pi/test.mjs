@@ -116,3 +116,45 @@ test('pi discovers, refreshes, preserves results, and confirms mutations', async
     rmSync(dir,{recursive:true,force:true});
   }
 });
+
+test('oauth refresh tokens are only presented to the configured issuer', async () => {
+  const { auth } = await import('@modelcontextprotocol/sdk/client/auth.js');
+  const { FileOAuthProvider } = await jiti.import('./oauth.ts');
+  const dir = mkdtempSync(join(tmpdir(), 'switchboard-pi-oauth-'));
+  try {
+    const tokenFile = join(dir, 'oauth.json');
+    const settings = { url: 'https://mcp.example.test/mcp', issuer: 'https://id.example.test', clientId: 'pi-switchboard', redirectUrl: 'http://127.0.0.1:18104/callback', scopes: ['openid'], tokenFile };
+    const metadata = issuer => ({ issuer, authorization_endpoint: `${issuer}/authorize`, token_endpoint: `${issuer}/token`, response_types_supported: ['code'], code_challenge_methods_supported: ['S256'] });
+    const requests = [];
+    let trustedIssuerClaim = 'https://id.example.test';
+    const fetchFn = async (input, init) => {
+      const url = new URL(String(input));
+      requests.push({ url, body: String(init?.body ?? '') });
+      const json = body => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+      if (url.host === 'mcp.example.test') return json({ resource: settings.url, authorization_servers: ['https://evil.example.test'] });
+      if (url.host === 'evil.example.test') return url.pathname === '/token' ? json({ access_token: 'stolen', token_type: 'Bearer' }) : json(metadata('https://evil.example.test'));
+      if (url.pathname === '/token') return json({ access_token: 'fresh', token_type: 'Bearer', refresh_token: 'synthetic-refresh-2' });
+      return json(metadata(trustedIssuerClaim));
+    };
+    // A token file written before issuer binding is migrated to the configured issuer.
+    writeFileSync(tokenFile, JSON.stringify({ access_token: 'old', token_type: 'Bearer', refresh_token: 'synthetic-refresh-1' }), { mode: 0o600 });
+    const provider = new FileOAuthProvider(settings, () => assert.fail('unexpected authorization redirect'));
+    assert.equal(await auth(provider, { serverUrl: settings.url, fetchFn }), 'AUTHORIZED');
+    assert.ok(requests.every(({ url }) => url.host !== 'evil.example.test'), 'discovery contacted the advertised attacker issuer');
+    assert.ok(requests.some(({ url, body }) => url.href === 'https://id.example.test/token' && body.includes('synthetic-refresh-1')));
+    assert.equal(JSON.parse(readFileSync(tokenFile, 'utf8')).issuer, 'https://id.example.test');
+
+    // Metadata from the configured URL must name the configured issuer.
+    trustedIssuerClaim = 'https://evil.example.test';
+    requests.length = 0;
+    await assert.rejects(auth(new FileOAuthProvider(settings, () => {}), { serverUrl: settings.url, fetchFn }), /unexpected issuer/);
+    assert.ok(requests.every(({ body }) => !body.includes('synthetic-refresh')));
+
+    // Tokens bound to another issuer are never returned.
+    writeFileSync(tokenFile, JSON.stringify({ access_token: 'x', token_type: 'Bearer', refresh_token: 'r', issuer: 'https://evil.example.test' }));
+    assert.equal(new FileOAuthProvider(settings, () => {}).tokens(), undefined);
+    assert.throws(() => new FileOAuthProvider(settings, () => {}).saveTokens({ access_token: 'x', token_type: 'Bearer', issuer: 'https://evil.example.test' }), /unexpected issuer/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

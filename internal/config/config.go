@@ -88,6 +88,9 @@ func (c Config) Validate() error {
 			if name == "" {
 				return fmt.Errorf("profile %q contains an empty capability name", profile)
 			}
+			if name == "switchboard" {
+				return fmt.Errorf("profile %q uses reserved capability name %q", profile, name)
+			}
 			if seen[name] {
 				return fmt.Errorf("profile %q contains duplicate capability %q", profile, name)
 			}

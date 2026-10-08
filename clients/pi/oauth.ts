@@ -1,5 +1,5 @@
-import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { OAuthClientInformationMixed, OAuthClientMetadata, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { OAuthClientProvider, OAuthDiscoveryState } from "@modelcontextprotocol/sdk/client/auth.js";
+import type { AuthorizationServerMetadata, OAuthClientInformationMixed, OAuthClientMetadata, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -39,8 +39,18 @@ export function loadSettings(): SwitchboardSettings {
   return { url, issuer, clientId: raw.client_id, redirectUrl, scopes, tokenFile: process.env.SWITCHBOARD_PI_TOKEN_FILE ?? defaultTokenFile };
 }
 
+function sameIssuer(a: unknown, b: string): boolean {
+  if (typeof a !== "string") return false;
+  try { return new URL(a).href.replace(/\/$/, "") === new URL(b).href.replace(/\/$/, ""); }
+  catch { return false; }
+}
+
+// Discovery, client information, and tokens are all pinned to the configured
+// issuer. Resource metadata from the MCP server can never redirect credentials
+// to another authorization server.
 export class FileOAuthProvider implements OAuthClientProvider {
   private verifier = "";
+  private metadata: AuthorizationServerMetadata | undefined;
   readonly expectedState = randomBytes(24).toString("base64url");
 
   constructor(readonly settings: SwitchboardSettings, private readonly onRedirect: (url: URL) => void | Promise<void>) {}
@@ -57,12 +67,29 @@ export class FileOAuthProvider implements OAuthClientProvider {
     };
   }
   state(): string { return this.expectedState; }
-  clientInformation(): OAuthClientInformationMixed { return { client_id: this.settings.clientId, token_endpoint_auth_method: "none" }; }
+  clientInformation(): OAuthClientInformationMixed {
+    return { client_id: this.settings.clientId, token_endpoint_auth_method: "none", issuer: this.settings.issuer };
+  }
+  discoveryState(): OAuthDiscoveryState {
+    return { authorizationServerUrl: this.settings.issuer, authorizationServerMetadata: this.metadata };
+  }
+  saveDiscoveryState(state: OAuthDiscoveryState): void {
+    if (!sameIssuer(state.authorizationServerUrl, this.settings.issuer) || !sameIssuer(state.authorizationServerMetadata?.issuer, this.settings.issuer)) {
+      throw new Error("OAuth discovery returned an unexpected issuer");
+    }
+    this.metadata = state.authorizationServerMetadata;
+  }
   tokens(): OAuthTokens | undefined {
-    try { return JSON.parse(readFileSync(this.settings.tokenFile, "utf8")); }
+    let stored: OAuthTokens;
+    try { stored = JSON.parse(readFileSync(this.settings.tokenFile, "utf8")); }
     catch (error: any) { if (error?.code === "ENOENT") return undefined; throw error; }
+    // Files written before issuer binding were obtained for the configured
+    // issuer and, with discovery pinned, can only be presented to it.
+    if (stored.issuer == null) return { ...stored, issuer: this.settings.issuer };
+    return sameIssuer(stored.issuer, this.settings.issuer) ? stored : undefined;
   }
   saveTokens(tokens: OAuthTokens): void {
+    if (!sameIssuer(tokens.issuer, this.settings.issuer)) throw new Error("refusing OAuth tokens from an unexpected issuer");
     const current = this.tokens();
     const saved = current?.refresh_token && !tokens.refresh_token ? { ...tokens, refresh_token: current.refresh_token } : tokens;
     mkdirSync(dirname(this.settings.tokenFile), { recursive: true, mode: 0o700 });

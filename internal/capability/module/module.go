@@ -125,6 +125,9 @@ func validateManifest(manifest Manifest, policy *egress.Policy) error {
 	if !validName.MatchString(manifest.Name) {
 		return fmt.Errorf("invalid capability name %q", manifest.Name)
 	}
+	if err := capability.ValidateName(manifest.Name); err != nil {
+		return err
+	}
 	if err := capability.ValidateRisk(manifest.Risk); err != nil {
 		return err
 	}
