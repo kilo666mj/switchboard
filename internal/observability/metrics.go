@@ -29,6 +29,7 @@ type Metrics struct {
 	policyHashes     map[string]uint64
 	capabilities     map[string]bool
 	loadFailures     map[string]uint64
+	authChallenges   atomic.Uint64
 	authFailures     atomic.Uint64
 	userInfoFailures atomic.Uint64
 	authzFailures    atomic.Uint64
@@ -69,6 +70,12 @@ func (m *Metrics) ObserveToolCall(capability, tool, decision, outcome string, du
 	sample.duration += duration
 	m.calls[key] = sample
 	m.mu.Unlock()
+}
+
+func (m *Metrics) AuthenticationChallenge() {
+	if m != nil {
+		m.authChallenges.Add(1)
+	}
 }
 
 func (m *Metrics) AuthenticationFailure() {
@@ -166,6 +173,10 @@ func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(policyComponents)
 	sort.Strings(capabilityNames)
 	var output strings.Builder
+	output.WriteString("# HELP switchboard_authentication_challenges_total Requests challenged because no bearer token was supplied.\n")
+	output.WriteString("# TYPE switchboard_authentication_challenges_total counter\n")
+	fmt.Fprintf(&output, "switchboard_authentication_challenges_total %d\n", m.authChallenges.Load())
+	output.WriteString("# HELP switchboard_authentication_failures_total Authentication failures excluding missing bearer token challenges.\n")
 	output.WriteString("# TYPE switchboard_authentication_failures_total counter\n")
 	fmt.Fprintf(&output, "switchboard_authentication_failures_total %d\n", m.authFailures.Load())
 	output.WriteString("# TYPE switchboard_oauth_userinfo_failures_total counter\n")

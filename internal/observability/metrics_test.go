@@ -10,6 +10,7 @@ import (
 
 func TestMetricsExposeOperationalSignalsWithoutIdentity(t *testing.T) {
 	metrics := NewMetrics()
+	metrics.AuthenticationChallenge()
 	metrics.AuthenticationFailure()
 	metrics.UserInfoFailure()
 	metrics.AuthorizationFailure()
@@ -25,6 +26,7 @@ func TestMetricsExposeOperationalSignalsWithoutIdentity(t *testing.T) {
 	metrics.ServeHTTP(response, request)
 	body := response.Body.String()
 	for _, value := range []string{
+		"switchboard_authentication_challenges_total 1",
 		"switchboard_authentication_failures_total 1",
 		"switchboard_oauth_userinfo_failures_total 1",
 		"switchboard_authorization_failures_total 1",
