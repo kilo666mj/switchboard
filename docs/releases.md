@@ -15,7 +15,7 @@ The container workflow first starts a native image with its network disabled,
 root filesystem read-only, all capabilities dropped, and `no-new-privileges`
 before any multi-architecture image is published.
 
-Build review archives from the exact audited source candidate with Go 1.27.1 or
+Build review archives from the exact audited source candidate with Go 1.27.2 or
 newer and Python 3. These commands only create local files; they do not upload,
 tag, push or change repository visibility.
 
