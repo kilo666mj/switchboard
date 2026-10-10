@@ -41,7 +41,7 @@ for either service.
 
 ## Quick start
 
-Requirements: Go 1.27.1 or newer.
+Requirements: Go 1.27.2 or newer.
 
 ```sh
 cp switchboard.example.json switchboard.json

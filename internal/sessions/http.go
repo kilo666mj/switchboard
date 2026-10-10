@@ -481,7 +481,11 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(authErr, auth.ErrUserInfo) {
 			h.metrics.UserInfoFailure()
 		}
-		if errors.Is(authErr, auth.ErrInsufficientScope) || errors.Is(authErr, auth.ErrPolicyDenied) || errors.Is(authErr, auth.ErrAmbiguousPolicy) {
+		if errors.Is(authErr, auth.ErrMissingToken) {
+			// Missing credentials initiate normal bearer/OAuth discovery. Keep
+			// these challenges visible without counting them as rejected tokens.
+			h.metrics.AuthenticationChallenge()
+		} else if errors.Is(authErr, auth.ErrInsufficientScope) || errors.Is(authErr, auth.ErrPolicyDenied) || errors.Is(authErr, auth.ErrAmbiguousPolicy) {
 			h.metrics.AuthorizationFailure()
 		} else {
 			h.metrics.AuthenticationFailure()

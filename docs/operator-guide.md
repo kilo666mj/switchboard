@@ -353,6 +353,16 @@ policy names, tool names, and usage volumes remain operationally sensitive.
 Ready-to-install alert rules are in
 [`monitoring/switchboard.rules.yml`](../monitoring/switchboard.rules.yml).
 
+`switchboard_authentication_challenges_total` counts requests with no bearer
+token, including normal OAuth discovery challenges. These still receive HTTP
+401 with the authentication challenge, but do not increment
+`switchboard_authentication_failures_total` or trigger
+`SwitchboardAuthenticationFailures`. Invalid or expired credentials and UserInfo
+failures remain authentication failures; permission denials remain authorization
+failures. The existing failure alert threshold is unchanged. Use the challenge
+counter to observe connection/discovery volume separately from rejected
+credentials; it is not a count of failed login attempts.
+
 ### OAuth resource-server authentication
 
 For short-lived user or workload identities, configure Switchboard as an OAuth
