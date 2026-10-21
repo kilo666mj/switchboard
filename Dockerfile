@@ -5,7 +5,7 @@ ARG TARGETARCH=amd64
 ARG VERSION=dev
 
 WORKDIR /src
-RUN apk add --no-cache python3
+RUN apk add --no-cache --upgrade ca-certificates python3
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
