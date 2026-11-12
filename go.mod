@@ -2,7 +2,7 @@ module github.com/kilo666mj/switchboard
 
 go 1.27.2
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
