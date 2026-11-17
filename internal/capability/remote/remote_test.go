@@ -536,3 +536,118 @@ func TestIncludeToolsRemainRestrictedAfterLastMatch(t *testing.T) {
 		t.Fatal("excluded tool executable")
 	}
 }
+
+func TestCapabilityPreservesOutputSchemaAndStructuredContent(t *testing.T) {
+	type stored struct {
+		Stored string `json:"stored"`
+		Count  int    `json:"count"`
+	}
+	upstream := mcpkit.MustServer(mcpkit.ServerConfig{Name: "memory", Version: "test"})
+	mcp.AddTool(upstream, &mcp.Tool{Name: "recall", Description: "Recall", Annotations: mcpkit.ReadOnly(false)},
+		func(_ context.Context, _ *mcp.CallToolRequest, input struct {
+			Text string `json:"text"`
+		}) (*mcp.CallToolResult, stored, error) {
+			return nil, stored{Stored: input.Text, Count: 2}, nil
+		})
+	upstreamHandler, err := mcpkit.StatelessHTTP(func(*http.Request) *mcp.Server { return upstream },
+		mcpkit.HTTPOptions{DisableLocalhostProtection: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := httptest.NewTLSServer(upstreamHandler)
+	defer api.Close()
+
+	item, err := newWithTransport(t.Context(), Manifest{Version: 1, Type: "mcp", Name: "wayminder", Endpoint: api.URL},
+		nil, api.Client().Transport.(*http.Transport).Clone())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer item.Close()
+	server, err := gateway.New("test", "all", "test", config.ToolPolicy{Version: "test", Profile: "all", Capabilities: map[string]string{item.Name(): "allow"}}, []capbase.Capability{item})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := mcpkittest.Connect(t, server)
+
+	assertOutputSchema := func(source string, schema any) {
+		t.Helper()
+		data, err := json.Marshal(schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded struct {
+			Type       string                     `json:"type"`
+			Properties map[string]json.RawMessage `json:"properties"`
+		}
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("%s output schema: %v in %s", source, err, data)
+		}
+		if decoded.Type != "object" || decoded.Properties["stored"] == nil || decoded.Properties["count"] == nil {
+			t.Fatalf("%s output schema = %s", source, data)
+		}
+	}
+
+	listed, err := session.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native *mcp.Tool
+	for _, tool := range listed.Tools {
+		if tool.Name == "wayminder_recall" {
+			native = tool
+		}
+	}
+	if native == nil {
+		t.Fatal("wayminder_recall is not listed")
+	}
+	assertOutputSchema("native tool", native.OutputSchema)
+
+	described, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "capability_describe", Arguments: map[string]any{"name": "wayminder"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if described.IsError {
+		t.Fatalf("capability_describe returned error: %#v", described.Content)
+	}
+	data, err := json.Marshal(described.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var description struct {
+		Tools []struct {
+			Name         string          `json:"name"`
+			OutputSchema json.RawMessage `json:"output_schema"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &description); err != nil {
+		t.Fatal(err)
+	}
+	if len(description.Tools) != 1 || description.Tools[0].Name != "wayminder_recall" {
+		t.Fatalf("described tools = %s", data)
+	}
+	assertOutputSchema("capability_describe", description.Tools[0].OutputSchema)
+
+	for _, call := range []*mcp.CallToolParams{
+		{Name: "wayminder_recall", Arguments: map[string]any{"text": "hello"}},
+		{Name: "capability_execute", Arguments: map[string]any{"capability": "wayminder", "tool": "wayminder_recall", "arguments": map[string]any{"text": "hello"}}},
+	} {
+		result, err := session.CallTool(t.Context(), call)
+		if err != nil {
+			t.Fatalf("%s: %v", call.Name, err)
+		}
+		if result.IsError {
+			t.Fatalf("%s returned error: %#v", call.Name, result.Content)
+		}
+		data, err := json.Marshal(result.StructuredContent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got stored
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s structured content: %v in %s", call.Name, err, data)
+		}
+		if got != (stored{Stored: "hello", Count: 2}) {
+			t.Fatalf("%s structured content = %s", call.Name, data)
+		}
+	}
+}

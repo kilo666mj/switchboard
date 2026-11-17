@@ -466,7 +466,7 @@ func (c *Capability) Describe() capability.Description {
 	d := capability.Description{Name: c.name, Metadata: c.metadata, Tools: []capability.ToolSummary{}}
 	for _, binding := range c.tools {
 		t := binding.definition
-		d.Tools = append(d.Tools, capability.ToolSummary{Name: t.Name, Description: t.Description, Annotations: t.Annotations, InputSchema: t.InputSchema})
+		d.Tools = append(d.Tools, capability.ToolSummary{Name: t.Name, Description: t.Description, Annotations: t.Annotations, InputSchema: t.InputSchema, OutputSchema: t.OutputSchema})
 	}
 	return d
 }

@@ -203,6 +203,7 @@ func (c *Capability) Describe() capability.Description {
 		description.Tools = append(description.Tools, capability.ToolSummary{
 			Name: tool.Name, Description: tool.Description,
 			Annotations: tool.Annotations, InputSchema: tool.InputSchema,
+			OutputSchema: tool.OutputSchema,
 		})
 	}
 	return description
