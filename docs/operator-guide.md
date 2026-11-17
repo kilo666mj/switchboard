@@ -205,9 +205,9 @@ title, tag, and description matches, with alphabetical ties. Empty queries
 list the catalog. `total` reports matches before the limit.
 
 `capability_describe` takes an exact `name` and returns public metadata plus
-exposed tool names, descriptions, and safety annotations. Remote MCP tool
-summaries also include input schemas; native schemas remain available through
-`tools/list`. Both discovery tools are read-only and preserve
+exposed tool names, descriptions, and safety annotations. Remote MCP and module
+tool summaries also include input schemas and, when the upstream declares one,
+output schemas; native schemas remain available through `tools/list`. Both discovery tools are read-only and preserve
 the existing profile-selected tools and stateless transport.
 
 REST, MCP, and module manifests accept optional `title`, `description`, `tags`,

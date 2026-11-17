@@ -15,10 +15,11 @@ type Metadata struct {
 }
 
 type ToolSummary struct {
-	InputSchema any                  `json:"input_schema,omitempty"`
-	Name        string               `json:"name"`
-	Description string               `json:"description,omitempty"`
-	Annotations *mcp.ToolAnnotations `json:"annotations,omitempty"`
+	InputSchema  any                  `json:"input_schema,omitempty"`
+	OutputSchema any                  `json:"output_schema,omitempty"`
+	Name         string               `json:"name"`
+	Description  string               `json:"description,omitempty"`
+	Annotations  *mcp.ToolAnnotations `json:"annotations,omitempty"`
 }
 
 type Description struct {
