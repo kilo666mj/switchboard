@@ -88,6 +88,15 @@ configured URL, credentials, TLS trust, DNS answer, allowed destination, and
 allowed CIDRs. Switchboard rejects the complete DNS response when any returned
 address falls outside the configured network boundary.
 
+When an established remote MCP session closes, Switchboard reconnects that
+upstream using its configured credentials. Concurrent callers share the attempt.
+After a failed reconnect, later calls can try again after a delay starting at
+five seconds and capped at five minutes. An explicitly read-only tool may be
+retried once on the replacement session. For a write with a lost response,
+check the upstream operation status before submitting it again. If a registered
+tool changed its schema or annotations, reload the gateway catalog before
+using that capability.
+
 Do not disable TLS verification, enable an environment proxy, or widen CIDRs to
 silence the error. Add only the exact reviewed destination and network path.
 Stdio deployments remain fail-fast because their lifecycle is local to the
