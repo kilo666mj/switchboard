@@ -21,8 +21,7 @@ func (c *Capability) ExecuteReadOnly(ctx context.Context, name string, arguments
 		if binding.definition.Name != name {
 			continue
 		}
-		a := binding.definition.Annotations
-		if a == nil || !a.ReadOnlyHint || (a.DestructiveHint != nil && *a.DestructiveHint) {
+		if !binding.readOnly() {
 			return nil, errors.New("compatibility execution requires an explicitly read-only, non-destructive tool")
 		}
 		if binding.schema == nil {
@@ -45,7 +44,7 @@ func (c *Capability) ExecuteReadOnly(ctx context.Context, name string, arguments
 		}
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: binding.upstream, Arguments: arguments})
+		return c.callTool(ctx, binding, arguments)
 	}
 	return nil, errors.New("tool is not available in this capability")
 }

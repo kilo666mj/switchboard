@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -83,7 +84,7 @@ type HeaderValue struct {
 type Capability struct {
 	metadata             capability.Metadata
 	name                 string
-	session              *mcp.ClientSession
+	upstream             *upstreamSession
 	tools                []toolBinding
 	forwardOAuthSubject  bool
 	forwardAccessSubject bool
@@ -184,7 +185,8 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	if policy != nil {
 		transport = policy.Transport()
 	}
-	var roundTripper http.RoundTripper = headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject}
+	headersTransport := headerTransport{base: transport, headers: headers, host: host, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject}
+	var credentials *clientcredentials.Config
 	if manifest.OAuth != nil {
 		if headers.Get("Authorization") != "" {
 			return nil, errors.New("set only one of Authorization header and oauth_client_credentials")
@@ -198,15 +200,69 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 				return nil, fmt.Errorf("%s OAuth token URL violates egress policy: %w", manifest.Name, err)
 			}
 		}
-		tokenContext := context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: rejectRedirect})
-		roundTripper = &oauth2.Transport{Source: oauthConfig.TokenSource(tokenContext), Base: roundTripper}
+		credentials = oauthConfig
 	}
-	httpClient := &http.Client{Timeout: 2 * time.Minute, Transport: roundTripper, CheckRedirect: rejectRedirect}
-	client := mcp.NewClient(&mcp.Implementation{Name: "switchboard", Version: "dev"}, nil)
-	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient}, nil)
+	lifetime, cancel := context.WithCancel(ctx)
+	connect := func(attempt context.Context) (*mcp.ClientSession, error) {
+		var rt http.RoundTripper = headersTransport
+		if credentials != nil {
+			tokenContext := context.WithValue(lifetime, oauth2.HTTPClient, &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: rejectRedirect})
+			rt = &oauth2.Transport{Source: credentials.TokenSource(tokenContext), Base: rt}
+		}
+		client := mcp.NewClient(&mcp.Implementation{Name: "switchboard", Version: "dev"}, nil)
+		httpClient := &http.Client{Timeout: 2 * time.Minute, Transport: rt, CheckRedirect: rejectRedirect}
+		return client.Connect(attempt, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient}, nil)
+	}
+	session, err := connect(ctx)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("%w: connect to %s MCP: %v", capability.ErrUnavailable, manifest.Name, err)
 	}
+	tools, err := discoverTools(ctx, session, manifest)
+	if err != nil {
+		cancel()
+		_ = session.Close()
+		return nil, err
+	}
+	upstream := &upstreamSession{name: manifest.Name, ctx: lifetime, cancel: cancel, active: session}
+	upstream.connect = func(attempt context.Context) (*mcp.ClientSession, error) {
+		next, err := connect(attempt)
+		if err != nil {
+			return nil, err
+		}
+		bindings, err := discoverTools(attempt, next, manifest)
+		if err == nil {
+			err = checkToolContracts(tools, bindings)
+		}
+		if err != nil {
+			_ = next.Close()
+			return nil, err
+		}
+		return next, nil
+	}
+	return &Capability{name: manifest.Name, upstream: upstream, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject, forwardSessionID: manifest.ForwardSessionID, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+}
+
+// Existing inbound sessions retain their registered tools and policy decisions.
+// New tools can wait for the next catalog load. Changes to an existing tool's
+// contract require a fresh catalog before calls on the new session are safe.
+func checkToolContracts(registered, discovered []toolBinding) error {
+	byName := make(map[string]*mcp.Tool, len(discovered))
+	for _, binding := range discovered {
+		byName[binding.upstream] = binding.definition
+	}
+	for _, binding := range registered {
+		previous, next := binding.definition, byName[binding.upstream]
+		if next == nil || !reflect.DeepEqual(previous.Annotations, next.Annotations) ||
+			!reflect.DeepEqual(previous.InputSchema, next.InputSchema) ||
+			!reflect.DeepEqual(previous.OutputSchema, next.OutputSchema) {
+			return fmt.Errorf("upstream tool %q changed; reload the gateway catalog", binding.upstream)
+		}
+	}
+	return nil
+}
+
+func discoverTools(ctx context.Context, session *mcp.ClientSession, manifest Manifest) ([]toolBinding, error) {
 	allowed := make(map[string]bool, len(manifest.IncludeTools))
 	for _, name := range manifest.IncludeTools {
 		allowed[name] = true
@@ -214,7 +270,6 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 	var tools []toolBinding
 	for tool, listErr := range session.Tools(ctx, nil) {
 		if listErr != nil {
-			_ = session.Close()
 			return nil, fmt.Errorf("%w: list %s tools: %v", capability.ErrUnavailable, manifest.Name, listErr)
 		}
 		if len(manifest.IncludeTools) > 0 && !allowed[tool.Name] {
@@ -224,7 +279,6 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 		if len(manifest.AnnotationRules) > 0 {
 			annotations, annotationErr := matchAnnotations(tool.Name, manifest.AnnotationRules)
 			if annotationErr != nil {
-				_ = session.Close()
 				return nil, fmt.Errorf("%s tool %q: %w", manifest.Name, tool.Name, annotationErr)
 			}
 			copy.Annotations = annotations
@@ -234,15 +288,13 @@ func newWithTransport(ctx context.Context, manifest Manifest, policy *egress.Pol
 		delete(allowed, tool.Name)
 	}
 	if len(allowed) > 0 {
-		_ = session.Close()
 		missing, _ := json.Marshal(allowed)
 		return nil, fmt.Errorf("%s include_tools not offered upstream: %s", manifest.Name, missing)
 	}
 	if len(tools) == 0 {
-		_ = session.Close()
 		return nil, fmt.Errorf("%s MCP offered no selected tools", manifest.Name)
 	}
-	return &Capability{name: manifest.Name, session: session, tools: tools, forwardOAuthSubject: manifest.ForwardOAuthSubject, forwardAccessSubject: manifest.ForwardAccessSubject, forwardSessionID: manifest.ForwardSessionID, metadata: capability.Metadata{Title: manifest.Title, Description: manifest.Description, Tags: manifest.Tags, Risk: manifest.Risk}}, nil
+	return tools, nil
 }
 
 func matchAnnotations(name string, rules []AnnotationRule) (*mcp.ToolAnnotations, error) {
@@ -367,13 +419,13 @@ func (c *Capability) callContext(ctx context.Context) context.Context {
 func (c *Capability) Register(server *mcp.Server) error {
 	for _, binding := range c.tools {
 		tool := *binding.definition
-		upstreamName := binding.upstream
+
 		server.AddTool(&tool, func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			arguments := request.Params.Arguments
 			if c.forwardSessionID && binding.acceptsSessionID {
 				arguments = withAgentSessionKey(arguments, c.sessionID)
 			}
-			return c.session.CallTool(c.callContext(ctx), &mcp.CallToolParams{Name: upstreamName, Arguments: arguments})
+			return c.callTool(ctx, binding, arguments)
 		})
 	}
 	return nil
@@ -406,7 +458,7 @@ func withAgentSessionKey(input json.RawMessage, sessionID string) json.RawMessag
 	return data
 }
 
-func (c *Capability) Close() error { return c.session.Close() }
+func (c *Capability) Close() error { return c.upstream.close() }
 
 func exposedName(capability, upstream string) string {
 	if strings.HasPrefix(upstream, capability+"_") {
